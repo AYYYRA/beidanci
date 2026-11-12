@@ -37,6 +37,9 @@ body{
 button{font-family:inherit;cursor:pointer;border:0;background:none;color:inherit;}
 button:focus{outline:none;}
 button:focus-visible,.wl-item:focus-visible{outline:2px solid var(--p1);outline-offset:2px;}
+/* 列表项贴着滚动容器边缘，outline 会画到容器外面被裁掉（截图上左侧框就缺了一块）。
+   这两项统一把描边画在内侧 */
+.wl-item:focus-visible,.wb-item:focus-visible{outline-offset:-2px;}
 input{font-family:inherit;}
 /* 高度不直接用 100vh/100dvh：iOS Safari 的 100vh 按"工具栏收起"算，
    100dvh 在 iOS 15.4 以下又不支持，页面都会比可见区域高一截，
@@ -5259,37 +5262,94 @@ fitViewport();
 })();
 
 /* ==========================================================
-   边缘右滑返回上一级
-   这是移动端约定俗成的交互（iOS 返回手势、很多 Android 与前端框架都这么做）：
-   从屏幕左边缘往右拖足够远就退回上一层。
-   只认左边缘起手 + 以横向为主的手势，不影响正常滚动和翻页
+   边缘右滑返回上一级（跟手版）
+   参考 iOS 原生返回手势 / Swipy 这类库的共同做法：
+   手指移动时页面实时跟着走，松手再按「位移 + 速度」判定是完成还是回弹。
+   原来只在 touchend 判一次、过程毫无反馈，所以用起来"不灵敏"。
    ========================================================== */
 (function edgeSwipeBack(){
-  var EDGE = 26;      /* 起手点必须在左侧 26px 内 */
-  var MIN_DX = 64;    /* 横向至少拖 64px */
-  var MAX_DY = 70;    /* 纵向抖动超过这个就当成滚动 */
-  var tracking = false, sx = 0, sy = 0;
+  var EDGE = 26;        /* 起手点必须在左侧 26px 内（与单词卡翻页的分界线一致） */
+  var START_TOL = 8;    /* 超过这个位移才认定为横滑，避免误判抖动 */
+  var DONE_X = 84;      /* 松手时位移超过这个就返回 */
+  var DONE_V = 0.30;    /* 或者速度够快（px/ms）也返回，短促一划就行 */
+  var tracking = false, swiping = false, actionable = false;
+  var sx = 0, sy = 0, cx = 0, st = 0, el = null;
+
+  function setX(node, x){
+    if (x === null) { node.style.transform = ''; }
+    else node.style.transform = 'translateX(' + x + 'px)';
+  }
+  function resetNode(node){
+    if (!node) return;
+    node.style.transform = '';
+    node.style.transition = '';
+    node.style.willChange = '';
+    node.style.boxShadow = '';
+  }
+
   document.addEventListener('touchstart', function(e){
-    if (e.touches.length !== 1){ tracking = false; return; }
+    if (e.touches.length !== 1){ tracking = false; swiping = false; return; }
     var t = e.touches[0];
-    tracking = t.clientX <= EDGE;      /* 只有贴着左边缘起手才算返回手势 */
-    sx = t.clientX; sy = t.clientY;
+    /* 注意：首页也要跟踪。哪怕首页没有"上一级"、我们不执行返回，
+       也必须把浏览器自己的边缘后退手势吃掉，否则用户在家页误滑会直接退出页面 */
+    if (t.clientX > EDGE || openMask()){ tracking = false; return; }
+    tracking = true; swiping = false;
+    sx = t.clientX; sy = t.clientY; cx = 0; st = Date.now();
+    el = document.querySelector('.screen.active');
+    actionable = state.screen !== 'home';
   }, { passive:true });
+
   document.addEventListener('touchmove', function(e){
     if (!tracking || e.touches.length !== 1) return;
     var t = e.touches[0];
-    if (Math.abs(t.clientY - sy) > Math.abs(t.clientX - sx) * 1.2) tracking = false;  /* 竖向为主 → 交给滚动 */
-  }, { passive:true });
+    var dx = t.clientX - sx, dy = t.clientY - sy;
+    if (!swiping){
+      if (Math.abs(dx) < START_TOL && Math.abs(dy) < START_TOL) return;
+      if (Math.abs(dy) > Math.abs(dx) * 1.2){ tracking = false; return; }   /* 竖向为主 → 交给滚动 */
+      swiping = true;
+      st = Date.now();
+      if (el){ el.style.transition = 'none'; el.style.willChange = 'transform'; }
+    }
+    /* 必须吃掉默认行为：不然 Chrome/Edge 会把边缘横滑当成浏览器自己的"后退"手势，
+       页面会被导航走（测试里直接变成 about:blank），我们的手势也抢不过它 */
+    if (e.cancelable) e.preventDefault();
+    cx = Math.max(0, dx);
+    if (el && actionable){
+      var w = window.innerWidth || 360;
+      var x = Math.min(cx, w);
+      setX(el, x);
+      /* 拖动时左侧带一点阴影，像页面被"推开" */
+      el.style.boxShadow = x > 4 ? '-8px 0 24px rgba(20,22,31,.12)' : '';
+    }
+  }, { passive:false });
+
   document.addEventListener('touchend', function(e){
-    if (!tracking) return;
-    tracking = false;
+    if (!tracking || !swiping){ tracking = false; swiping = false; return; }
+    tracking = false; swiping = false;
+    var node = el; el = null;
+    if (!node) return;
     var t = e.changedTouches && e.changedTouches[0];
-    if (!t) return;
-    var dx = t.clientX - sx, dy = Math.abs(t.clientY - sy);
-    if (dx < MIN_DX || dy > MAX_DY) return;
-    if (openMask()) return;          /* 有弹层时交给弹层自己处理 */
-    if (state.screen === 'home') return;
-    goBack();
+    var dt = Math.max(1, Date.now() - st);
+    var v = t ? (t.clientX - sx) / dt : 0;          /* px/ms，向右为正 */
+    var done = actionable && (cx > DONE_X || (v > DONE_V && cx > 20));
+
+    node.style.transition = 'transform .18s cubic-bezier(.22,.8,.3,1)';
+    if (done){
+      setX(node, (window.innerWidth || 360));
+      setTimeout(function(){
+        resetNode(node);
+        goBack();                                    /* 先滑出去，再切屏 */
+      }, 170);
+    } else {
+      setX(node, 0);                                 /* 没滑够就弹回去 */
+      setTimeout(function(){ resetNode(node); }, 190);
+    }
+  }, { passive:true });
+
+  /* 手势中断（来电、切后台等）也要复位，别把页面留在半路 */
+  document.addEventListener('touchcancel', function(){
+    if (el) resetNode(el);
+    el = null; tracking = false; swiping = false;
   }, { passive:true });
 })();
 
@@ -5311,7 +5371,8 @@ fitViewport();
     if (!active || e.touches.length !== 1) return;
     var t = e.touches[0];
     if (Math.abs(t.clientY - sy) > Math.abs(t.clientX - sx) * 1.2) active = false;  /* 竖向 → 交给滚动 */
-  }, { passive:true });
+    else if (e.cancelable) e.preventDefault();      /* 横滑翻卡时别让浏览器抢去当"后退" */
+  }, { passive:false });
   document.addEventListener('touchend', function(e){
     if (!active) return;
     active = false;
