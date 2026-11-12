@@ -38,11 +38,22 @@ button{font-family:inherit;cursor:pointer;border:0;background:none;color:inherit
 button:focus{outline:none;}
 button:focus-visible,.wl-item:focus-visible{outline:2px solid var(--p1);outline-offset:2px;}
 input{font-family:inherit;}
-.app{height:100vh;height:100dvh;}
+/* 高度不直接用 100vh/100dvh：iOS Safari 的 100vh 按"工具栏收起"算，
+   100dvh 在 iOS 15.4 以下又不支持，页面都会比可见区域高一截，
+   底部按钮会被浏览器工具栏压住。app.js 会把真实可见高度写进 --app-h */
+.app{height:100vh;height:var(--app-h,100dvh);}
 .screen{
   display:none;
-  height:100vh;height:100dvh;
+  height:100vh;height:var(--app-h,100dvh);
   padding:var(--pad) 16px;
+  /* 刘海屏 / home indicator 安全区。不做处理的话：
+     底部那排按钮会压在 home bar 下面，看不见也点不到；
+     全屏（添加到主屏幕）时顶部词库名会被刘海挡住。
+     不支持 env() 的浏览器会忽略这四条，退回上面那条普通 padding */
+  padding-top:calc(var(--pad) + env(safe-area-inset-top, 0px));
+  padding-right:calc(16px + env(safe-area-inset-right, 0px));
+  padding-bottom:calc(var(--pad) + env(safe-area-inset-bottom, 0px));
+  padding-left:calc(16px + env(safe-area-inset-left, 0px));
   flex-direction:column;
 }
 .screen.active{display:flex;}
@@ -588,7 +599,7 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 .fb .answer-line span{color:var(--grey2);font-size:var(--fs-aux);}
 .fb .tip-line{margin-top:2px;}
 
-.q-actions{display:flex;gap:12px;min-height:50px;}
+.q-actions{display:flex;gap:12px;min-height:50px;flex:0 0 auto;}
 .q-actions button{flex:1;}
 .q-actions .hidden{display:none;}
 
@@ -699,6 +710,17 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 .set-hint{font-size:var(--fs-aux);color:var(--grey2);line-height:1.6;}
 .set-btn{width:100%;background:none;border:0;font-family:inherit;text-align:left;}
 .set-v{font-size:var(--fs-aux);color:var(--grey2);font-weight:600;}
+
+/* ==========================================================
+   第十三轮：手机端底部按钮可见性
+   真机上 home indicator / 手势条会盖住底部约 34px，加上浏览器工具栏，
+   原来那排按钮离屏幕底只有 17px，会被压住看不见也点不到
+   ========================================================== */
+/* 触屏设备没有物理键盘：键盘提示纯占地方，藏掉给按钮让位 */
+@media (hover:none) and (pointer:coarse){
+  .keyhint{display:none;}
+  .q-actions{padding-bottom:2px;}
+}
 </style>
 </head>
 <body>
@@ -3914,6 +3936,21 @@ document.addEventListener('keydown', function(e){
     if (n >= 0){ e.preventDefault(); chooseOpt(n); }
   }
 });
+
+/* ==========================================================
+   视口高度：iOS Safari 的 100vh 按"工具栏收起"算，100dvh 在老版本又不支持，
+   两种情况页面都会比实际可见区域高，底部的「下一题」「上一个/下一个」就被工具栏压住。
+   直接把 window.innerHeight 写进 CSS 变量：工具栏收起/展开、转屏都会触发 resize
+   （iOS 上键盘弹出不会改 innerHeight，是覆盖式的，所以不影响打字时的布局）
+   ========================================================== */
+function fitViewport(){
+  var h = window.innerHeight;
+  if (h > 0) document.documentElement.style.setProperty('--app-h', h + 'px');
+}
+window.addEventListener('resize', fitViewport);
+window.addEventListener('orientationchange', fitViewport);
+if (window.visualViewport && visualViewport.addEventListener) visualViewport.addEventListener('resize', fitViewport);
+fitViewport();
 
 /* ==========================================================
    初始化：先读本地进度，再渲染首页并停在主页（不自动进学习页）
