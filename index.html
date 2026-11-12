@@ -989,6 +989,16 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
           </div>
           <div class="set-group">
             <div class="set-row set-col">
+              <span class="set-k">题型</span>
+              <div class="seg seg-sm" id="qtypeSeg">
+                <button type="button" data-q="choice">选择题</button>
+                <button type="button" data-q="fill">填空题</button>
+              </div>
+              <div class="set-hint">选择题＝看词选中文；填空题＝补全例句里的单词（没例句就听音拼写）。全部词库通用</div>
+            </div>
+          </div>
+          <div class="set-group">
+            <div class="set-row set-col">
               <span class="set-k">发音口音</span>
               <div class="seg seg-sm" id="accentSeg">
                 <button type="button" data-a="us">美式</button>
@@ -996,6 +1006,12 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
               </div>
               <div class="set-hint">用在线词典音库发音；没网时自动退回内置美式录音</div>
             </div>
+          </div>
+          <div class="set-group">
+            <label class="set-row" for="sfxToggle">
+              <span class="set-k">答对答错音效</span>
+              <input type="checkbox" class="switch" id="sfxToggle" checked>
+            </label>
           </div>
           <div class="set-group hidden" id="testGroup">
             <button type="button" class="set-row set-btn" id="entryTest">
@@ -2248,6 +2264,41 @@ function ttsSpeak(w){
 function speak(){ var word = state.deck[state.deckIndex]; if (word) speakWord(word.w); }
 
 /* ==========================================================
+   答题音效：用 WebAudio 现场合成两个短音，不额外加载文件
+   答对＝上行两个音；答错＝下行两个闷音。设置页可以关掉
+   ========================================================== */
+var sfxCtx = null;
+function sfxNote(ctx, freq, start, dur, type, peak){
+  var osc = ctx.createOscillator(), g = ctx.createGain();
+  osc.type = type || 'sine';
+  osc.frequency.setValueAtTime(freq, start);
+  g.gain.setValueAtTime(0.0001, start);
+  g.gain.linearRampToValueAtTime(peak, start + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+  osc.connect(g);
+  g.connect(ctx.destination);
+  osc.start(start);
+  osc.stop(start + dur + 0.03);
+}
+function playFeedbackSound(ok){
+  if (!db || !db.settings || db.settings.sfx === false) return;
+  try {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!sfxCtx) sfxCtx = new AC();
+    if (sfxCtx.state === 'suspended' && sfxCtx.resume) sfxCtx.resume();
+    var t = sfxCtx.currentTime + 0.01;
+    if (ok){
+      sfxNote(sfxCtx, 784, t, 0.10, 'sine', 0.18);
+      sfxNote(sfxCtx, 1175, t + 0.085, 0.15, 'sine', 0.15);
+    } else {
+      sfxNote(sfxCtx, 233, t, 0.13, 'triangle', 0.16);
+      sfxNote(sfxCtx, 175, t + 0.11, 0.20, 'triangle', 0.13);
+    }
+  } catch (e) { /* 没有音频设备时静默跳过 */ }
+}
+
+/* ==========================================================
    本地存储：所有读写都包 try/catch，失败给提示，不白屏
    每套词库自己的进度：practice（这一轮哪些词做过、对没对）、wrong（错题本）、mastered（已掌握）
    切词库时整套换进换出 vault
@@ -2260,7 +2311,7 @@ function freshDb(){
   return {
     activeLib:BUILTIN_LIBS[0].id, libs:null, vault:{}, libExtra:{},
     practice:freshPractice(), wrong:{}, mastered:{},
-    settings:{ toeflSeen:true, wbV2:true, accent:'us' }, selftest:null
+    settings:{ toeflSeen:true, wbV2:true, accent:'us', qtype:'choice', sfx:true }, selftest:null
   };
 }
 function save(){
@@ -2594,11 +2645,12 @@ function fillQ(word){
   return null;
 }
 function dictQ(word){ return { type:'dict', word:word, answer:word.w, token:word.w }; }
-/* 新词考词义（四选一）；拼写词考补全单词；错题本里的词按连对次数在选择题和填空题之间轮换 */
+/* 题型（设置页可改，全局生效）：默认选择题＝全部四选一；
+   选填空题＝全部拼写（例句挖空，没有例句就听音拼写）。
+   B 卷自测有固定题型（Part 1 四选一 + Part 2 补全单词），不受这个设置影响 */
 function questionFor(word){
-  var r = db.wrong[word.w];
-  var spell = word.sp || (r && (r.streak || 0) % 2 === 1);
-  return spell ? (fillQ(word) || dictQ(word)) : choiceQ(word, WORDS);
+  if (db.settings.qtype === 'fill') return fillQ(word) || dictQ(word);
+  return choiceQ(word, WORDS);
 }
 
 /* 开始做题：deck 接着这一轮没做过的词；practice 练给定的词（错题本 / 刚做错的）。顺序每次都打乱 */
@@ -2770,6 +2822,7 @@ function markAnswer(ok, chosenIdx, cur, typed, skipped){
       $('fillSentence').innerHTML = esc(cur.before) + '<b class="filled' + (ok ? '' : ' no') + '">' + esc(cur.token) + '</b>' + esc(cur.after);
   }
   var auto = ok && db.settings.autoNext !== false;
+  playFeedbackSound(ok);
   $('feedbackPane').className = 'fb ' + (ok ? 'ok' : 'no');
   $('feedbackText').className = 'feedback ' + (ok ? 'ok' : 'no');
   $('feedbackText').textContent = ok ? ('✓ 答对了' + (auto ? '，马上下一题' : '')) : (skipped ? '跳过了' : (typed ? '✗ 你写的是 ' + typed : '✗ 答错了'));
@@ -3229,13 +3282,26 @@ function renderManage(){
   $('manageStat').innerHTML = (st.round > 1 ? '第 <b>' + st.round + '</b> 轮 · ' : '') + '已做 <b>' + st.done + ' / ' + st.total + '</b> · 答对 <b>' + st.right + '</b><br>'
     + '错题本 <b>' + wrongCount() + ' 个</b> · 历史错题 <b>' + Object.keys(db.mastered).length + ' 个</b>';
   $('autoNextToggle').checked = db.settings.autoNext !== false;
+  $('sfxToggle').checked = db.settings.sfx !== false;
   var seg = $('accentSeg');
   if (seg){
     var btns = seg.querySelectorAll('button'), cur = isUK() ? 'uk' : 'us', i;
     for (i=0;i<btns.length;i++) btns[i].classList.toggle('on', btns[i].getAttribute('data-a') === cur);
   }
+  var qseg = $('qtypeSeg');
+  if (qseg){
+    var qbtns = qseg.querySelectorAll('button'), qcur = db.settings.qtype === 'fill' ? 'fill' : 'choice', j;
+    for (j=0;j<qbtns.length;j++) qbtns[j].classList.toggle('on', qbtns[j].getAttribute('data-q') === qcur);
+  }
   renderCopy();
   renderManageLibs();
+}
+/* 换题型：下一题开始生效（当前正在做的这一轮不重排） */
+function setQType(q){
+  db.settings.qtype = q === 'fill' ? 'fill' : 'choice';
+  save();
+  renderManage();
+  showToast(db.settings.qtype === 'fill' ? '题型已切到填空题' : '题型已切到选择题');
 }
 /* 换口音：清掉已缓存的在线音频，下一题开始就是新口音 */
 function setAccent(a){
@@ -3291,12 +3357,15 @@ function openResetConfirm(){
 }
 function resetAll(){
   var keepAuto = db.settings.autoNext, keepAccent = db.settings.accent;
+  var keepQType = db.settings.qtype, keepSfx = db.settings.sfx;
   var keepLibs = db.libs, keepExtra = db.libExtra, keepActive = db.activeLib;
   try { localStorage.removeItem(STORE_KEY); }
   catch (e){ showWarn(); }
   db = freshDb();
   if (keepAuto === false) db.settings.autoNext = false;
   if (keepAccent) db.settings.accent = keepAccent;
+  if (keepQType) db.settings.qtype = keepQType;
+  if (keepSfx === false) db.settings.sfx = false;
   if (keepLibs && keepLibs.length) db.libs = keepLibs;
   if (keepExtra) db.libExtra = keepExtra;
   db.activeLib = keepActive;
@@ -3654,6 +3723,19 @@ bind($('libAllWrong'), function(){ closeLibModal(); openWrong('all'); });
     (function(el){ bind(el, function(){ setAccent(el.getAttribute('data-a')); }); })(segs[i]);
   }
 })();
+/* 题型：选择题 / 填空题 */
+(function(){
+  var segs = $('qtypeSeg').querySelectorAll('button'), i;
+  for (i=0;i<segs.length;i++){
+    (function(el){ bind(el, function(){ setQType(el.getAttribute('data-q')); }); })(segs[i]);
+  }
+})();
+$('sfxToggle').addEventListener('change', function(){
+  db.settings.sfx = this.checked;
+  save();
+  if (this.checked) playFeedbackSound(true);
+  showToast(this.checked ? '答题音效已打开' : '答题音效已关闭');
+});
 
 bind($('backBtn'), leaveStudy);
 bind($('wordText'), function(){ speak(); });
