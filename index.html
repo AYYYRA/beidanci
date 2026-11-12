@@ -99,6 +99,13 @@
 }
 /* 深色下主按钮是浅底的，文字和图标要反成深色，否则白底白字看不见 */
 [data-theme="dark"] .btn-primary{color:var(--on-primary);}
+/* 分段控件的选中项：深色下要比轨道更亮才看得出"选中"，不能沿用浅色系的"更白"逻辑 */
+[data-theme="dark"] .seg button.on{background:#4C4C4C;color:#FFFFFF;box-shadow:0 2px 10px rgba(0,0,0,.65);}
+/* 开关：未选中是深轨浅钮，选中是白轨深钮，两种状态都要能分辨 */
+[data-theme="dark"] .switch{background:#4A4A4A;}
+[data-theme="dark"] .switch::after{background:#D0D0D0;}
+[data-theme="dark"] .switch:checked{background:var(--p1);}
+[data-theme="dark"] .switch:checked::after{background:#111111;}
 /* 选项里的字母块：底色变成白（答对）或红（答错），里面的字母必须跟着反色，
    否则白底白字直接看不见 */
 [data-theme="dark"] .opt.is-right .opt-k,
@@ -919,14 +926,21 @@ body.booting .app{pointer-events:none;}
 /* 遮罩一出现就开始爬进度：真实的下载阶段拿不到字节数，
    就按时间往前推（越接近 68% 越慢），脚本真正开始执行时再跳到 72% */
 (function () {
-  /* 先把主题贴上，避免先闪一下默认蓝白再变色 */
+  /* 先把主题贴上，避免先闪一下默认蓝白再变色。
+     顺便把浏览器自己的界面色（iOS 顶部状态栏 / 底部工具栏）也一起换掉——
+     这一行必须在启动阶段就设置，等 app.js 执行就太晚了，加载页会一直是蓝的 */
+  var CHROME = { blue: '#EAF3FF', warm: '#F7EFE4', dark: '#000000' };
+  var theme = 'blue';
   try {
     var raw = localStorage.getItem('vocab-booster-cet4-100.v1');
     if (raw) {
       var t = (JSON.parse(raw).settings || {}).theme;
-      if (t === 'warm' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      if (t === 'warm' || t === 'dark') theme = t;
     }
   } catch (e) {}
+  if (theme !== 'blue') document.documentElement.setAttribute('data-theme', theme);
+  var meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', CHROME[theme]);
   var bar = document.getElementById('bootBar');
   var hint = document.getElementById('bootHint');
   var p = 8, timer = null;
@@ -1241,8 +1255,8 @@ body.booting .app{pointer-events:none;}
               <div class="seg seg-sm" id="autoMsSeg">
                 <button type="button" data-ms="120">很快</button>
                 <button type="button" data-ms="840">标准</button>
-                <button type="button" data-ms="1600">慢</button>
-                <button type="button" data-ms="2600">更慢</button>
+                <button type="button" data-ms="2600">很慢</button>
+                <button type="button" data-ms="0">不自动跳转</button>
               </div>
               <div class="set-hint" id="autoMsHint">答对后停留 0.84 秒再跳到下一题</div>
             </div>
@@ -4672,16 +4686,17 @@ function renderManage(){
     var qbtns = qseg.querySelectorAll('button'), qcur = db.settings.qtype === 'fill' ? 'fill' : 'choice', j;
     for (j=0;j<qbtns.length;j++) qbtns[j].classList.toggle('on', qbtns[j].getAttribute('data-q') === qcur);
   }
-  /* 自动跳题速度 */
+  /* 自动跳题速度：选中的那一档要和开关状态一致 */
   var autoOn = db.settings.autoNext !== false;
   var curMs = db.settings.autoNextMs > 0 ? db.settings.autoNextMs : AUTO_NEXT_MS;
+  var selMs = autoOn ? curMs : 0;      /* 关掉时高亮「不自动跳转」这一档 */
   var mseg = $('autoMsSeg');
   if (mseg){
     var mbtns = mseg.querySelectorAll('button'), k;
-    for (k=0;k<mbtns.length;k++) mbtns[k].classList.toggle('on', Number(mbtns[k].getAttribute('data-ms')) === curMs);
+    for (k=0;k<mbtns.length;k++) mbtns[k].classList.toggle('on', Number(mbtns[k].getAttribute('data-ms')) === selMs);
   }
   var mrow = $('autoMsRow');
-  if (mrow) mrow.classList.toggle('is-off', !autoOn);
+  if (mrow) mrow.classList.remove('is-off');   /* 不再整体变淡，因为「不自动跳转」本身就是一个可选档 */
   var tseg = $('themeSeg');
   if (tseg){
     var tbtns = tseg.querySelectorAll('button'), ti, tcur = normTheme(db.settings.theme);
@@ -4690,8 +4705,8 @@ function renderManage(){
   var mhint = $('autoMsHint');
   if (mhint){
     mhint.textContent = !autoOn
-      ? '关掉自动跳题后，这档速度不生效'
-      : '答对后停留 ' + (curMs < 1000 ? (curMs / 1000).toFixed(2).replace(/0$/, '') : (curMs / 1000).toFixed(1)) + ' 秒再跳到下一题';
+      ? '答完后不自动跳，点「下一题」继续'
+      : '答对后停留 ' + (curMs < 1000 ? (curMs / 1000).toFixed(2) : (curMs / 1000).toFixed(1)) + ' 秒再跳到下一题';
   }
   renderCopy();
   renderSafeBox();
@@ -4724,14 +4739,26 @@ function setTheme(t){
   showToast(db.settings.theme === 'warm' ? '已换成暖色外观'
     : (db.settings.theme === 'dark' ? '已换成深色外观' : '已换回蓝白外观'));
 }
-/* 自动跳题速度：毫秒值，存进设置 */
+/* 自动跳题速度：毫秒值，存进设置。0 = 不自动跳转（和上面的开关是同一件事） */
 function setAutoNextMs(ms){
   var v = Number(ms);
-  if (!(v > 0)) return;
+  if (!isFinite(v) || v < 0) return;
+  var tgl = $('autoNextToggle');
+  if (v === 0){
+    db.settings.autoNextMs = 0;
+    db.settings.autoNext = false;
+    if (tgl) tgl.checked = false;
+    save();
+    renderManage();
+    showToast('已关闭自动跳题，答完点一下再走');
+    return;
+  }
   db.settings.autoNextMs = v;
+  db.settings.autoNext = true;        /* 选了具体速度就等于打开自动跳题 */
+  if (tgl) tgl.checked = true;
   save();
   renderManage();
-  showToast('自动跳题：' + (v < 1000 ? (v / 1000).toFixed(2).replace(/0$/, '') + ' 秒' : (v / 1000).toFixed(1) + ' 秒') + '后跳到下一题');
+  showToast('自动跳题：' + (v / 1000).toFixed(v < 1000 ? 2 : 1) + ' 秒后跳到下一题');
 }
 /* 换口音：清掉已缓存的在线音频，下一题开始就是新口音 */
 function setAccent(a){
@@ -5281,7 +5308,10 @@ bind($('moreEntryBtn'), openMore);
 bind($('moreBackBtn'), function(){ renderManage(); show('manage'); });
 $('autoNextToggle').addEventListener('change', function(){
   db.settings.autoNext = this.checked;
+  /* 打开开关时如果之前选了「不自动跳转」，恢复成标准速度，否则打不开 */
+  if (this.checked && !(db.settings.autoNextMs > 0)) db.settings.autoNextMs = AUTO_NEXT_MS;
   save();
+  renderManage();
   showToast(this.checked ? '答对后会自动跳到下一题' : '已关闭自动跳题');
 });
 bind($('exportBtn'), exportBackup);
