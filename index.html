@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>背单词 · 大学英语四级高频词</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>📖</text></svg>">
+<meta name="theme-color" content="#1E80FF">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="背单词">
 <style>
 :root{
   --p1:#1E80FF; --p2:#38BDF8;
@@ -668,10 +672,33 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 .done-strip i{flex:1;background:var(--soft2);}
 .done-strip i.ok{background:var(--green);}
 .done-strip i.no{background:var(--danger);}
-.done-strip.plain{display:block;}
-.done-strip.plain b{display:block;height:100%;background:linear-gradient(90deg,#2B7BF5,#38BDF8);}
+.done-strip.plain i{min-width:0;}
 #restartBtn{align-self:stretch;}
 .wb-ok{color:var(--green);font-weight:700;}
+
+/* ==========================================================
+   第十二轮：词库菜单分组 + 每库进度条 + 总错题本 + 发音口音
+   ========================================================== */
+/* 词库菜单里的分类小标题 */
+.lib-group{font-size:var(--fs-aux);font-weight:800;color:var(--grey2);letter-spacing:.04em;margin:2px 0 -2px;padding-left:2px;}
+.lib-group:not(:first-child){margin-top:6px;}
+/* 每个词库一条进度小格子：绿对红错灰没做 */
+.lib-strip{display:flex;gap:1px;height:7px;margin:7px 0 6px;border-radius:999px;overflow:hidden;background:var(--soft2);}
+.lib-strip i{flex:1;background:var(--soft2);min-width:0;}
+.lib-strip i.ok{background:var(--green);}
+.lib-strip i.no{background:var(--danger);}
+/* 总错题本：菜单最上面一条，颜色比普通词库重一点 */
+.lib-all{background:linear-gradient(135deg,#FFF7EA,#FFFDF8);border-color:#F3DDB5;margin-bottom:10px;display:block;}
+.lib-all:hover{background:linear-gradient(135deg,#FFF3DF,#FFFDF8);border-color:#EBCE9B;}
+/* 错题本里的「重点」「所属词库」标签 */
+.wb-key{color:#B4551B;background:#FFEFE0;border-radius:6px;padding:0 6px;font-weight:700;}
+.wb-lib{color:var(--p1);background:#EAF3FF;border-radius:6px;padding:0 6px;font-weight:600;}
+/* 设置页的小号分段控件 + 说明 + 整行按钮 */
+.seg-sm{padding:2px;}
+.seg-sm button{padding:5px 0;font-size:var(--fs-aux);}
+.set-hint{font-size:var(--fs-aux);color:var(--grey2);line-height:1.6;}
+.set-btn{width:100%;background:none;border:0;font-family:inherit;text-align:left;}
+.set-v{font-size:var(--fs-aux);color:var(--grey2);font-weight:600;}
 </style>
 </head>
 <body>
@@ -692,6 +719,10 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
   <div class="modal lib-modal" role="dialog" aria-modal="true" aria-labelledby="libModalTitle">
     <div class="modal-title" id="libModalTitle">切换词库</div>
     <div class="modal-desc">每套词库单独记练习进度和错题本。</div>
+    <button type="button" class="lib-item lib-all" id="libAllWrong">
+      <div class="lib-item-name">总错题本</div>
+      <div class="lib-item-meta" id="libAllWrongMeta">还没有错题</div>
+    </button>
     <div class="lib-list" id="libList"></div>
     <div class="modal-row"><button type="button" class="btn-secondary" id="libClose">关闭</button></div>
   </div>
@@ -732,11 +763,6 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
       </div>
 
       <div class="entries" id="entries">
-        <button type="button" class="entry entry-test hidden" id="entryTest">
-          <svg class="entry-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6l1 2h3v14H5V6h3l1-2z"/><path d="M9 13l2 2 4-4"/></svg>
-          <span class="entry-name">B 卷自测</span>
-          <span class="entry-meta" id="metaTest">130 题</span>
-        </button>
         <button type="button" class="entry" id="entryWrong">
           <svg class="entry-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v16l-6-4-6 4V4z"/></svg>
           <span class="entry-name">错题本</span>
@@ -907,7 +933,8 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
       </div>
       <div class="seg" id="wbFilter">
         <button type="button" data-f="all">全部 <b>0</b></button>
-        <button type="button" data-f="mastered">已掌握 <b>0</b></button>
+        <button type="button" data-f="key">重点 <b>0</b></button>
+        <button type="button" data-f="hist">历史 <b>0</b></button>
       </div>
       <div class="wb-list" id="wbList"></div>
       <div class="q-actions">
@@ -960,6 +987,22 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
               <input type="checkbox" class="switch" id="autoNextToggle" checked>
             </label>
           </div>
+          <div class="set-group">
+            <div class="set-row set-col">
+              <span class="set-k">发音口音</span>
+              <div class="seg seg-sm" id="accentSeg">
+                <button type="button" data-a="us">美式</button>
+                <button type="button" data-a="uk">英式</button>
+              </div>
+              <div class="set-hint">用在线词典音库发音；没网时自动退回内置美式录音</div>
+            </div>
+          </div>
+          <div class="set-group hidden" id="testGroup">
+            <button type="button" class="set-row set-btn" id="entryTest">
+              <span class="set-k">B 卷自测 · 130 题</span>
+              <span class="set-v" id="metaTest">130 题</span>
+            </button>
+          </div>
           <div class="manage-stat" id="manageStat"></div>
           <button type="button" class="btn-secondary" id="restartBtn">这一轮从头开始</button>
           <div class="manage-desc">把进度导出成 JSON 文件存起来，换电脑或清缓存前先备份；以后选这个文件导回来，进度就回来了。</div>
@@ -1010,8 +1053,11 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
    切换词库时会被重新赋值，别把它们当成固定常量。
    ========================================================== */
 var LIB_NAME = '托福 B 卷 100 词';
-/* 错题本里的词连对几次算掌握（掌握后挪到「已掌握」） */
+/* 错题本里的词连对几次算掌握（掌握后滑到「历史错题」） */
 var MASTER_STREAK = 3;
+/* 重点错题：一个词累计错这么多次，或者连着错这么多次，就收进「重点」栏 */
+var KEY_WRONG_N = 5;
+var KEY_WRONG_STREAK = 3;
 var STORE_KEY = 'vocab-booster-cet4-100.v1';
 /* 答对后自动跳下一题的等待时间（毫秒）；拼写/填空题多给 420ms 看清答案。设置页可以关掉自动跳转 */
 var AUTO_NEXT_MS = 840;
@@ -2010,15 +2056,24 @@ var LIB_DATA = {
   spoken:  { words: SPOKEN_A.concat(SPOKEN_B), detail: {} },
   ai:      { words: AI_A.concat(AI_B), detail: {} }
 };
+/* 词库菜单的分类顺序：只显示有词库的分类；以后加中小学词库，给它 group:'school' 就自动归到那一栏 */
+var LIB_GROUPS = [
+  {id:'cet',    name:'四六级'},
+  {id:'toefl',  name:'托福'},
+  {id:'ielts',  name:'雅思'},
+  {id:'kaoyan', name:'考研'},
+  {id:'school', name:'中小学'},
+  {id:'other',  name:'其他'}
+];
 var BUILTIN_LIBS = [
-  {id:'toefl', name:'托福 B 卷 100 词', builtin:true},
-  {id:'toeflsp', name:'托福拼写 30 词', builtin:true},
-  {id:'cet4', name:'大学英语四级高频词', builtin:true},
-  {id:'cet6', name:'大学英语六级进阶词', builtin:true},
-  {id:'kaoyan', name:'考研英语核心词', builtin:true},
-  {id:'ielts', name:'留学考试学术词汇', builtin:true},
-  {id:'spoken', name:'口语与职场高频词', builtin:true},
-  {id:'ai', name:'AI 与科技词汇', builtin:true}
+  {id:'toefl',   name:'托福 B 卷 100 词',  builtin:true, group:'toefl'},
+  {id:'toeflsp', name:'托福拼写 30 词',    builtin:true, group:'toefl'},
+  {id:'cet4',    name:'大学英语四级高频词', builtin:true, group:'cet'},
+  {id:'cet6',    name:'大学英语六级进阶词', builtin:true, group:'cet'},
+  {id:'kaoyan',  name:'考研英语核心词',     builtin:true, group:'kaoyan'},
+  {id:'ielts',   name:'留学考试学术词汇',   builtin:true, group:'ielts'},
+  {id:'spoken',  name:'口语与职场高频词',   builtin:true, group:'other'},
+  {id:'ai',      name:'AI 与科技词汇',      builtin:true, group:'other'}
 ];
 /* 离线词典：内置词库并集，供「粘贴单词 → 解析并补全」命中；托福排最前，释义以答案卷为准 */
 var DICT = {};
@@ -2066,7 +2121,8 @@ var state = {
   screen:'home',
   deck:[], deckIndex:0, mode:'browse',
   quiz:null,
-  pasteRows:null, listFilter:'all'
+  pasteRows:null, listFilter:'all',
+  wbScope:'lib', wbFilter:'all', wbOpen:''
 };
 function show(name){
   state.screen = name;
@@ -2090,10 +2146,16 @@ function bind(el, fn){
 
 /* ==========================================================
    发音
-   内置词库的词：用打包进页面的录音（data/audio.js），离线可用、点了就响
-   自己加的词：退回浏览器语音合成。这台电脑只装了中文语音时，浏览器会改用联网语音，要等将近一秒
+   首选：在线词典音库（有道，type=2 美式 / type=1 英式）。词典按词条给音，
+        record / present / contract 这类名词动词重音不同的词不会读错
+   次选：打包进页面的录音（data/audio.js，微软 edge-tts 美式），离线兜底、点了就响
+   兜底：浏览器语音合成（本机只有中文语音时，浏览器会改用联网语音，要等将近一秒）
    ========================================================== */
-var audioEls = {}, curAudio = null;
+var audioEls = {}, curAudio = null, onlineCache = {};
+
+/* 口音：默认美式，设置页可以切英式 */
+function isUK(){ return !!(db && db.settings && db.settings.accent === 'uk'); }
+
 function audioFor(w){
   var key = String(w).toLowerCase();
   if (typeof AUDIO === 'undefined' || !AUDIO[key]) return null;
@@ -2104,8 +2166,36 @@ function audioFor(w){
   }
   return audioEls[key];
 }
-/* 提前把下一题的录音解码好，切题时零等待 */
-function preloadWord(w){ if (w) audioFor(w); }
+function onlineUrl(w){
+  return 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(String(w).trim())
+       + '&type=' + (isUK() ? 1 : 2);
+}
+function onlineAudio(w){
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return null;
+  var k = (isUK() ? 'uk:' : 'us:') + String(w).toLowerCase(), rec = onlineCache[k];
+  if (!rec){
+    rec = onlineCache[k] = { el: null, bad: false };
+    var a = new Audio();
+    a.preload = 'auto';
+    a.addEventListener('error', function(){ rec.bad = true; });
+    a.src = onlineUrl(w);
+    rec.el = a;
+  }
+  return rec.bad ? null : rec;
+}
+/* 播放；浏览器还没允许出声（NotAllowedError）不算音源坏了，别降级 */
+function playEl(a, onFail){
+  curAudio = a;
+  try { a.currentTime = 0; } catch (e) {}
+  var p = a.play();
+  if (p && p.catch) p.catch(function(err){ if (!err || err.name !== 'NotAllowedError') onFail(); });
+}
+/* 提前把下一题的录音取好，切题时零等待 */
+function preloadWord(w){
+  if (!w) return;
+  onlineAudio(w);
+  audioFor(w);
+}
 /* 第一次出声时系统要先打开音频设备（三四百毫秒）：页面一打开就静音放一段，把设备先热起来 */
 function warmAudio(){
   if (typeof AUDIO === 'undefined') return;
@@ -2121,32 +2211,36 @@ function stopSpeech(){
   if (curAudio){ try { curAudio.pause(); } catch (e) {} }
   try { if ('speechSynthesis' in window && (speechSynthesis.speaking || speechSynthesis.pending)) speechSynthesis.cancel(); } catch (e) {}
 }
+function speakLocal(w){
+  var a = audioFor(w);
+  if (a){ playEl(a, function(){ ttsSpeak(w); }); return; }
+  ttsSpeak(w);
+}
 function speakWord(w){
   if (!w) return;
-  var a = audioFor(w);
   stopSpeech();
-  if (a){
-    curAudio = a;
-    try { a.currentTime = 0; } catch (e) {}
-    var p = a.play();
-    if (p && p.catch) p.catch(function(err){ if (!err || err.name !== 'NotAllowedError') ttsSpeak(w); });
+  var rec = onlineAudio(w);
+  if (rec){
+    playEl(rec.el, function(){ rec.bad = true; speakLocal(w); });
     return;
   }
-  ttsSpeak(w);
+  speakLocal(w);
 }
 /* 语音合成兜底：优先本机英语声音，联网声音（Google / Online）排后面 */
 function ttsVoice(){
-  var vs = speechSynthesis.getVoices().filter(function(v){ return /^en([-_]|$)/i.test(v.lang); });
+  var all = speechSynthesis.getVoices().filter(function(v){ return /^en([-_]|$)/i.test(v.lang); });
+  var want = all.filter(function(v){ return isUK() ? /^en[-_]GB/i.test(v.lang) : /^en[-_]US/i.test(v.lang); });
+  var pool = want.length ? want : all;
   var score = function(v){
-    return (v.localService ? 10 : 0) + (/en[-_]US/i.test(v.lang) ? 3 : 0) - (/online|natural|google|neural/i.test(v.name) ? 5 : 0);
+    return (v.localService ? 10 : 0) - (/online|natural|google|neural/i.test(v.name) ? 5 : 0);
   };
-  return vs.sort(function(x, y){ return score(y) - score(x); })[0] || null;
+  return pool.sort(function(x, y){ return score(y) - score(x); })[0] || null;
 }
 function ttsSpeak(w){
   if (!('speechSynthesis' in window)) return;
   try {
     var u = new SpeechSynthesisUtterance(w), v = ttsVoice();
-    if (v){ u.voice = v; u.lang = v.lang; } else u.lang = 'en-US';
+    if (v){ u.voice = v; u.lang = v.lang; } else u.lang = isUK() ? 'en-GB' : 'en-US';
     u.rate = 0.95;
     speechSynthesis.speak(u);
   } catch (err) { /* 无语音引擎时静默跳过 */ }
@@ -2166,7 +2260,7 @@ function freshDb(){
   return {
     activeLib:BUILTIN_LIBS[0].id, libs:null, vault:{}, libExtra:{},
     practice:freshPractice(), wrong:{}, mastered:{},
-    settings:{ toeflSeen:true, wbV2:true }, selftest:null
+    settings:{ toeflSeen:true, wbV2:true, accent:'us' }, selftest:null
   };
 }
 function save(){
@@ -2267,11 +2361,12 @@ function newRound(){
 
 /* ==========================================================
    错题本：只收答错过的词（第一次就答对的词不进来）
-   答错 -> 进本子（已在就把连对清零），记下错几次、上次写成了什么
-   本子里的词再答对 -> 连对 +1；连对 MASTER_STREAK 次 -> 掌握，挪到「已掌握」，能放回
+   答错 -> 进本子（连对清零、连续错 +1），记下错几次、上次写成了什么
+   本子里的词再答对 -> 连对 +1，连续错清零；连对 MASTER_STREAK 次 -> 掌握，滑到「历史错题」，能放回
+   累计错 KEY_WRONG_N 次、或者连续错 KEY_WRONG_STREAK 次 -> 进「重点错题」
    ========================================================== */
 function enroll(key){
-  if (!db.wrong[key]) db.wrong[key] = { n:0, streak:0, t:Date.now() };
+  if (!db.wrong[key]) db.wrong[key] = { n:0, ws:0, streak:0, t:Date.now() };
   return db.wrong[key];
 }
 function recordResult(key, ok, typed){
@@ -2279,26 +2374,33 @@ function recordResult(key, ok, typed){
   if (!ok){
     r = enroll(key);
     r.n = (r.n || 0) + 1;
+    r.ws = (r.ws || 0) + 1;
     r.streak = 0;
     r.t = Date.now();
     if (typed) r.typed = typed;
     delete db.mastered[key];
   } else if (r){
+    r.ws = 0;
     r.streak = (r.streak || 0) + 1;
     if (r.streak >= MASTER_STREAK) masterWord(key);
   }
   save();
+}
+/* 重点错题：错得多的、或者连着错的 */
+function isKeyWrong(r){
+  return !!r && ((r.n || 0) >= KEY_WRONG_N || (r.ws || 0) >= KEY_WRONG_STREAK);
 }
 function masterWord(key){
   var r = db.wrong[key] || {};
   db.mastered[key] = { n:r.n || 0, t:Date.now() };
   delete db.wrong[key];
 }
-/* 已掌握的词放回错题本：错误次数保留，连对从 0 重新数 */
+/* 历史错题放回本子：错误次数保留，连对从 0 重新数 */
 function unmasterWord(key){
   var m = db.mastered[key] || {};
   var r = enroll(key);
   r.n = m.n || r.n || 0;
+  r.ws = 0;
   r.streak = 0;
   delete db.mastered[key];
   save();
@@ -2314,8 +2416,25 @@ function wrongCount(){ return Object.keys(db.wrong).length; }
 /* ==========================================================
    首页：已做几题 + 一条小格子（绿 = 对，红 = 错，灰 = 没做） + 一个按钮
    ========================================================== */
+/* 进度小格子：词不多时一格一个词；词太多（几千个）按比例画成三段，免得节点太多卡住 */
+function stripInner(words, answers){
+  var i, w, n = words.length, ok = 0, no = 0, html = '';
+  if (!n) return '';
+  for (i=0;i<n;i++){ w = words[i].w; if (w in answers){ if (answers[w]) ok++; else no++; } }
+  if (n <= 160){
+    for (i=0;i<n;i++){
+      w = words[i].w;
+      html += '<i' + (w in answers ? (answers[w] ? ' class="ok"' : ' class="no"') : '') + '></i>';
+    }
+    return html;
+  }
+  return '<i class="ok" style="flex:' + ok + '"></i>'
+       + '<i class="no" style="flex:' + no + '"></i>'
+       + '<i style="flex:' + (n - ok - no) + '"></i>';
+}
+function stripClass(n){ return 'done-strip' + (n > 160 ? ' plain' : ''); }
 function renderHome(){
-  var st = practiceStats(), a = db.practice.answers, html = '', i;
+  var st = practiceStats(), a = db.practice.answers;
   $('libNameTop').textContent = LIB_NAME;
   document.title = '背单词 · ' + LIB_NAME;
 
@@ -2324,19 +2443,10 @@ function renderHome(){
   $('doneTotal').textContent = ' / ' + st.total + ' 题';
   $('subLine').textContent = !st.total ? '这个词库还没有单词，到「设置与备份」里添加'
     : (st.round > 1 ? '第 ' + st.round + ' 轮 · ' : '') + (st.done ? '答对 ' + st.right + ' · 答错 ' + st.wrong : '按词库顺序一题一题做，随时可以停');
-  /* 词太多时格子挤不下，退回一条普通进度条 */
+  /* 词太多时格子挤不下，按比例画成三段 */
   var strip = $('doneStrip');
-  if (st.total && st.total <= 160){
-    for (i=0;i<WORDS.length;i++){
-      var w = WORDS[i].w;
-      html += '<i' + (w in a ? (a[w] ? ' class="ok"' : ' class="no"') : '') + '></i>';
-    }
-    strip.className = 'done-strip';
-  } else {
-    html = '<b style="width:' + (st.total ? st.done / st.total * 100 : 0) + '%"></b>';
-    strip.className = 'done-strip plain';
-  }
-  strip.innerHTML = html;
+  strip.className = stripClass(WORDS.length);
+  strip.innerHTML = stripInner(WORDS, a);
 
   var btn = $('startBtn');
   btn.disabled = !st.total;
@@ -2348,10 +2458,11 @@ function renderCopy(){
   $('metaAll').textContent = WORDS.length + ' 词';
   var n = wrongCount();
   $('metaWrong').textContent = n ? n + ' 个' : '还没有错题';
+  /* B 卷自测只对托福库有意义，入口收进「设置与备份」，首页不再多一个按钮 */
   var isToefl = db.activeLib === 'toefl' || db.activeLib === 'toeflsp';
-  $('entryTest').classList.toggle('hidden', !isToefl);
-  $('entries').classList.toggle('has-test', isToefl);
-  if (isToefl){
+  var grp = $('testGroup');
+  if (grp) grp.classList.toggle('hidden', !isToefl);
+  if (isToefl && $('metaTest')){
     var t = db.selftest;
     $('metaTest').textContent = t ? ('上次 ' + t.p1 + ' / 100') : '130 题';
   }
@@ -2778,25 +2889,48 @@ function renderResult(){
 }
 
 /* ==========================================================
-   错题本：全部 / 已掌握
+   错题本：全部 / 重点 / 历史
+   范围（state.wbScope）：lib = 当前词库；all = 总错题本（所有词库的错题合在一起）
    每个词一行：连对进度点、错几次；点开看例句、构词、上次写错成什么
    ========================================================== */
+function vaultOf(id){
+  if (!db.vault[id]) db.vault[id] = { practice:freshPractice(), wrong:{}, mastered:{} };
+  return db.vault[id];
+}
+function wrongMapOf(id){
+  return id === db.activeLib ? db.wrong : vaultOf(id).wrong;
+}
+function masteredMapOf(id){
+  return id === db.activeLib ? db.mastered : vaultOf(id).mastered;
+}
+function wbLibs(){ return state.wbScope === 'all' ? registeredLibs() : [activeLib()]; }
 function wbLists(){
-  var out = { all:[], mastered:[] }, k, w;
-  for (k in db.wrong){
-    w = wordByKey(k);
-    if (w) out.all.push({ w:w, r:db.wrong[k] });
-  }
-  for (k in db.mastered){
-    w = wordByKey(k);
-    if (w) out.mastered.push({ w:w, m:db.mastered[k] });
+  var out = { all:[], key:[], hist:[] }, libs = wbLibs(), i, k, w, lm, mm, row;
+  for (i=0;i<libs.length;i++){
+    lm = wrongMapOf(libs[i].id);
+    mm = masteredMapOf(libs[i].id);
+    for (k in lm){
+      w = wordByKey(k);
+      if (!w) continue;
+      row = { w:w, r:lm[k], libId:libs[i].id, libName:libs[i].name };
+      out.all.push(row);
+      if (isKeyWrong(lm[k])) out.key.push(row);
+    }
+    for (k in mm){
+      w = wordByKey(k);
+      if (!w) continue;
+      out.hist.push({ w:w, m:mm[k], libId:libs[i].id, libName:libs[i].name });
+    }
   }
   /* 错得多的排前面，一样多的最近错的排前面 */
-  out.all.sort(function(a, b){ return ((b.r.n || 0) - (a.r.n || 0)) || ((b.r.t || 0) - (a.r.t || 0)); });
-  out.mastered.sort(function(a, b){ return (b.m.t || 0) - (a.m.t || 0); });
+  var byBad = function(a, b){ return ((b.r.n || 0) - (a.r.n || 0)) || ((b.r.t || 0) - (a.r.t || 0)); };
+  out.all.sort(byBad);
+  out.key.sort(byBad);
+  out.hist.sort(function(a, b){ return (b.m.t || 0) - (a.m.t || 0); });
   return out;
 }
-function openWrong(){
+function openWrong(scope){
+  state.wbScope = scope === 'all' ? 'all' : 'lib';
   state.wbFilter = 'all';
   state.wbOpen = '';
   renderWrong();
@@ -2804,15 +2938,17 @@ function openWrong(){
 }
 function wbItemHtml(x, f){
   var w = x.w, open = state.wbOpen === w.w, d = DETAIL_ALL[w.w], meta, more = '', i;
-  if (f === 'mastered'){
-    meta = '<span class="wb-ok">已掌握</span>' + (x.m.n ? '<span>错过 ' + x.m.n + ' 次</span>' : '');
+  if (f === 'hist'){
+    meta = '<span class="wb-ok">连对 ' + MASTER_STREAK + ' 次</span>' + (x.m.n ? '<span>错过 ' + x.m.n + ' 次</span>' : '');
   } else {
     var st = x.r.streak || 0, dots = '';
     for (i=0;i<MASTER_STREAK;i++) dots += '<i' + (i < st ? ' class="on"' : '') + '></i>';
     meta = '<span class="wb-dots" title="连对 ' + MASTER_STREAK + ' 次就算掌握">' + dots + '</span>'
          + '<span>连对 ' + st + ' / ' + MASTER_STREAK + '</span>'
          + (x.r.n ? '<span class="wb-n">错 ' + x.r.n + ' 次</span>' : '<span>手动加入</span>');
+    if (isKeyWrong(x.r)) meta += '<span class="wb-key">重点</span>';
   }
+  if (state.wbScope === 'all') meta += '<span class="wb-lib">' + esc(x.libName) + '</span>';
   if (open){
     more = '<div class="wb-more">'
          + (x.r && x.r.typed ? '<div class="wb-typed">上次写成 <s>' + esc(x.r.typed) + '</s></div>' : '')
@@ -2820,12 +2956,12 @@ function wbItemHtml(x, f){
          + (w.tip ? '<div class="wb-detail"><b>拼写陷阱</b>' + esc(w.tip) + '</div>' : '')
          + (d ? '<div class="wb-detail"><b>构词</b>' + esc(d.formation) + '</div><div class="wb-detail"><b>同族词</b>' + esc(d.family) + '</div>' : '')
          + '<div class="wb-acts">'
-         + (f === 'mastered'
+         + (f === 'hist'
              ? '<button type="button" class="btn-tiny" data-act="restore">放回错题本</button>'
              : '<button type="button" class="btn-tiny" data-act="master">已经记住了</button><button type="button" class="btn-tiny" data-act="remove">移出错题本</button>')
          + '</div></div>';
   }
-  return '<div class="wb-item' + (open ? ' open' : '') + '" data-w="' + esc(w.w) + '" tabindex="0" role="button" aria-expanded="' + open + '">'
+  return '<div class="wb-item' + (open ? ' open' : '') + '" data-w="' + esc(w.w) + '" data-lib="' + esc(x.libId) + '" tabindex="0" role="button" aria-expanded="' + open + '">'
        +   '<div class="wb-top"><span class="wb-w">' + esc(w.w) + '</span><span class="wb-ph">' + esc(w.ph) + '</span>'
        +     '<button type="button" class="mini-spk" data-w="' + esc(w.w) + '" aria-label="朗读">' + SPK_SVG + '</button></div>'
        +   '<div class="wb-cn">' + esc(w.pos + ' ' + w.cn) + '</div>'
@@ -2834,30 +2970,46 @@ function wbItemHtml(x, f){
        + '</div>';
 }
 function renderWrong(){
-  var L = wbLists(), f = state.wbFilter || 'all', rows = L[f], html = '', i;
+  var L = wbLists(), f = state.wbFilter || 'all', rows = L[f] || L.all, html = '', i;
   var segs = $('wbFilter').querySelectorAll('button');
   for (i=0;i<segs.length;i++){
     var sf = segs[i].getAttribute('data-f');
     segs[i].classList.toggle('on', sf === f);
-    segs[i].querySelector('b').textContent = String(L[sf].length);
+    segs[i].querySelector('b').textContent = String((L[sf] || []).length);
   }
+  $('wbTitle').textContent = state.wbScope === 'all' ? '总错题本' : '错题本';
   if (!rows.length){
-    html = '<div class="empty">' + (f === 'mastered'
-      ? '还没有掌握的词。错题本里的词连对 ' + MASTER_STREAK + ' 次会挪到这里。'
-      : '还没有错题。做题答错的词会自动收进来，在这里连对 ' + MASTER_STREAK + ' 次就算掌握。') + '</div>';
+    html = '<div class="empty">' + (f === 'hist'
+      ? '还没有历史错题。错题本里的词连对 ' + MASTER_STREAK + ' 次会滑到这里。'
+      : (f === 'key'
+        ? '还没有重点错题。一个词累计错 ' + KEY_WRONG_N + ' 次、或连着错 ' + KEY_WRONG_STREAK + ' 次，就会收进这里。'
+        : '还没有错题。做题答错的词会自动收进来，在这里连对 ' + MASTER_STREAK + ' 次就算掌握。')) + '</div>';
   }
   for (i=0;i<rows.length;i++) html += wbItemHtml(rows[i], f);
   $('wbList').innerHTML = html;
   $('wbCopy').classList.toggle('hidden', !rows.length);
   var btn = $('wbPractice'), n = rows.length;
-  btn.textContent = !n ? '没有可练的词' : (f === 'mastered' ? '再复习这 ' + n + ' 个' : '练错题（' + n + ' 个）');
+  btn.textContent = !n ? '没有可练的词' : (f === 'hist' ? '再复习这 ' + n + ' 个' : '练错题（' + n + ' 个）');
   btn.disabled = !n;
   btn.classList.toggle('is-disabled', !n);
 }
-function wbAction(act, key){
-  if (act === 'remove'){ delete db.wrong[key]; showToast('已移出错题本'); }
-  else if (act === 'master'){ masterWord(key); showToast('已挪到「已掌握」'); }
-  else if (act === 'restore'){ unmasterWord(key); showToast('已放回错题本，今天就能练'); }
+function wbAction(act, key, libId){
+  var id = libId || db.activeLib, wm = wrongMapOf(id), mm = masteredMapOf(id), r, m;
+  if (act === 'remove'){ delete wm[key]; showToast('已移出错题本'); }
+  else if (act === 'master'){
+    r = wm[key] || {};
+    mm[key] = { n:r.n || 0, t:Date.now() };
+    delete wm[key];
+    showToast('已挪到「历史错题」');
+  } else if (act === 'restore'){
+    m = mm[key] || {};
+    r = wm[key] || (wm[key] = { n:0, ws:0, streak:0, t:Date.now() });
+    r.n = m.n || r.n || 0;
+    r.ws = 0;
+    r.streak = 0;
+    delete mm[key];
+    showToast('已放回错题本');
+  }
   state.wbOpen = '';
   save();
   renderWrong();
@@ -3075,9 +3227,25 @@ function openManage(){ renderManage(); show('manage'); }
 function renderManage(){
   var st = practiceStats();
   $('manageStat').innerHTML = (st.round > 1 ? '第 <b>' + st.round + '</b> 轮 · ' : '') + '已做 <b>' + st.done + ' / ' + st.total + '</b> · 答对 <b>' + st.right + '</b><br>'
-    + '错题本 <b>' + wrongCount() + ' 个</b> · 已掌握 <b>' + Object.keys(db.mastered).length + ' 个</b>';
+    + '错题本 <b>' + wrongCount() + ' 个</b> · 历史错题 <b>' + Object.keys(db.mastered).length + ' 个</b>';
   $('autoNextToggle').checked = db.settings.autoNext !== false;
+  var seg = $('accentSeg');
+  if (seg){
+    var btns = seg.querySelectorAll('button'), cur = isUK() ? 'uk' : 'us', i;
+    for (i=0;i<btns.length;i++) btns[i].classList.toggle('on', btns[i].getAttribute('data-a') === cur);
+  }
+  renderCopy();
   renderManageLibs();
+}
+/* 换口音：清掉已缓存的在线音频，下一题开始就是新口音 */
+function setAccent(a){
+  db.settings.accent = a === 'uk' ? 'uk' : 'us';
+  save();
+  onlineCache = {};
+  audioEls = {};
+  stopSpeech();
+  renderManage();
+  showToast(db.settings.accent === 'uk' ? '发音已切到英式' : '发音已切到美式');
 }
 function exportBackup(){
   var url = null;
@@ -3122,12 +3290,13 @@ function openResetConfirm(){
   askConfirm('重置全部进度？', '会清掉所有词库的练习记录、错题本和已掌握，词库本身保留。这个操作不能撤销，建议先导出备份。', '确认重置', resetAll);
 }
 function resetAll(){
-  var keepAuto = db.settings.autoNext;
+  var keepAuto = db.settings.autoNext, keepAccent = db.settings.accent;
   var keepLibs = db.libs, keepExtra = db.libExtra, keepActive = db.activeLib;
   try { localStorage.removeItem(STORE_KEY); }
   catch (e){ showWarn(); }
   db = freshDb();
   if (keepAuto === false) db.settings.autoNext = false;
+  if (keepAccent) db.settings.accent = keepAccent;
   if (keepLibs && keepLibs.length) db.libs = keepLibs;
   if (keepExtra) db.libExtra = keepExtra;
   db.activeLib = keepActive;
@@ -3219,22 +3388,50 @@ function fallbackWord(){
    ========================================================== */
 function openLibModal(){ renderLibModal(); $('libMask').classList.remove('hidden'); }
 function closeLibModal(){ $('libMask').classList.add('hidden'); }
+/* 词库属于哪个分类（菜单分组用）：内置库在 registry 里标了 group，自建库归「我的词库」 */
+function libGroupOf(lib){
+  if (!lib.builtin) return 'mine';
+  for (var i=0;i<BUILTIN_LIBS.length;i++)
+    if (BUILTIN_LIBS[i].id === lib.id) return BUILTIN_LIBS[i].group || 'other';
+  return 'other';
+}
+function libAnswers(id){
+  if (id === db.activeLib) return db.practice.answers || {};
+  var v = db.vault[id];
+  return v ? normPractice(v.practice, v.daily).answers : {};
+}
+function wrongCountOf(id){
+  var m = id === db.activeLib ? db.wrong : ((db.vault[id] && db.vault[id].wrong) || {});
+  return Object.keys(m).length;
+}
+function libItemHtml(lib){
+  var words = libWords(lib), n = words.length, p = libProgress(lib.id);
+  var on = lib.id === db.activeLib ? ' on' : '';
+  var badge = lib.builtin ? '' : '<span class="lib-badge alt">自建</span>';
+  return '<button type="button" class="lib-item' + on + '" data-id="' + esc(lib.id) + '">'
+       +   '<div class="lib-item-name">' + esc(lib.name) + badge + '</div>'
+       +   '<div class="lib-strip' + (n > 160 ? ' plain' : '') + '">' + stripInner(words, libAnswers(lib.id)) + '</div>'
+       +   '<div class="lib-item-meta">' + n + ' 词' + (p ? ' · 已做 ' + p : '') + '</div>'
+       + '</button>';
+}
 function renderLibModal(){
-  var L = registeredLibs(), html = '', i;
-  for (i=0;i<L.length;i++){
-    var lib = L[i], p = libProgress(lib.id), n = libWords(lib).length;
-    var on = lib.id === db.activeLib ? ' on' : '';
-    var badge = lib.builtin ? '<span class="lib-badge">内置</span>' : '<span class="lib-badge alt">自建</span>';
-    html += '<button type="button" class="lib-item' + on + '" data-id="' + esc(lib.id) + '">'
-          +   '<div class="lib-item-name">' + esc(lib.name) + badge + '</div>'
-          +   '<div class="lib-item-meta">' + n + ' 词' + (p ? ' · 已做 ' + p : '') + '</div>'
-          + '</button>';
+  var L = registeredLibs(), order = LIB_GROUPS.concat([{ id:'mine', name:'我的词库' }]);
+  var html = '', i, j;
+  for (j=0;j<order.length;j++){
+    var g = order[j], rows = '';
+    for (i=0;i<L.length;i++) if (libGroupOf(L[i]) === g.id) rows += libItemHtml(L[i]);
+    if (!rows) continue;
+    html += '<div class="lib-group">' + esc(g.name) + '</div>' + rows;
   }
   $('libList').innerHTML = html;
   var items = $('libList').querySelectorAll('.lib-item');
   for (i=0;i<items.length;i++){
     (function(el){ bind(el, function(){ switchLib(el.getAttribute('data-id')); }); })(items[i]);
   }
+  /* 总错题本：所有词库的错题合在一起 */
+  var all = 0;
+  for (i=0;i<L.length;i++) all += wrongCountOf(L[i].id);
+  $('libAllWrongMeta').textContent = all ? (all + ' 个词 · 所有词库合计') : '还没有错题';
 }
 
 /* ==========================================================
@@ -3243,7 +3440,7 @@ function renderLibModal(){
 function renderManageLibs(){
   var lib = activeLib();
   $('libCur').textContent = '当前：' + lib.name + '（' + libWords(lib).length + ' 词）'
-    + (lib.builtin ? ' · 内置' : ' · 自建');
+    + (lib.builtin ? '' : ' · 自建');
   $('renameLibName').value = '';
   $('newLibName').value = '';
 }
@@ -3448,6 +3645,15 @@ bind($('startBtn'), function(){ startQuiz('deck'); });
 bind($('entryWrong'), openWrong);
 bind($('entryAll'), openList);
 bind($('entryTest'), startTest);
+/* 总错题本：所有词库的错题合在一起看 */
+bind($('libAllWrong'), function(){ closeLibModal(); openWrong('all'); });
+/* 发音口音：美式 / 英式 */
+(function(){
+  var segs = $('accentSeg').querySelectorAll('button'), i;
+  for (i=0;i<segs.length;i++){
+    (function(el){ bind(el, function(){ setAccent(el.getAttribute('data-a')); }); })(segs[i]);
+  }
+})();
 
 bind($('backBtn'), leaveStudy);
 bind($('wordText'), function(){ speak(); });
@@ -3493,7 +3699,7 @@ $('trMiss').addEventListener('click', function(e){
   if (spk) speakWord(spk.getAttribute('data-w'));
 });
 
-bind($('resultHome'), function(){ state.quiz && state.quiz.mode === 'practice' ? openWrong() : goHome(); });
+bind($('resultHome'), function(){ state.quiz && state.quiz.mode === 'practice' ? openWrong(state.wbScope) : goHome(); });
 bind($('resultRetry'), function(){ var q = state.quiz; if (q && q.wrongWords.length) startQuiz('practice', q.wrongWords.slice()); });
 bind($('wrongMiniList'), function(e){ var spk = e.target.closest('.mini-spk'); if (spk) speakWord(spk.getAttribute('data-w')); });
 
@@ -3516,7 +3722,7 @@ $('wbList').addEventListener('click', function(e){
   var spk = e.target.closest('.mini-spk');
   if (spk){ speakWord(spk.getAttribute('data-w')); return; }
   var act = e.target.closest('[data-act]'), item = e.target.closest('.wb-item');
-  if (act && item){ wbAction(act.getAttribute('data-act'), item.getAttribute('data-w')); return; }
+  if (act && item){ wbAction(act.getAttribute('data-act'), item.getAttribute('data-w'), item.getAttribute('data-lib')); return; }
   if (item) wbToggle(item);
 });
 $('wbList').addEventListener('keydown', function(e){
