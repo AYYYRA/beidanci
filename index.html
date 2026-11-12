@@ -292,7 +292,10 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 #shareCanvas{max-width:100%;max-height:100%;width:auto;height:auto;border-radius:14px;box-shadow:0 8px 24px rgba(30,96,200,.12);}
 .share-empty{color:var(--grey);font-size:var(--fs-body);text-align:center;line-height:1.6;padding:20px;}
 .share-card .row2 button{width:calc(50% - 6px);}
-.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:rgba(20,22,31,.92);color:#fff;font-size:14px;padding:10px 18px;border-radius:999px;display:none;z-index:99;max-width:88vw;text-align:center;}
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:rgba(20,22,31,.92);color:#fff;font-size:14px;line-height:1.5;padding:12px 18px;border-radius:14px;display:none;z-index:99;
+  /* 原来 max-width:88vw + 胶囊圆角，长句会在很窄的宽度里折行，断句很难看。
+     这里放宽到 92vw，按内容自适应宽度，并用 balance 让每行长度尽量均匀 */
+  width:max-content;max-width:min(92vw,560px);text-align:center;text-wrap:balance;overflow-wrap:break-word;}
 .toast.show{display:block;}
 /* 第 8 屏：历史打卡、月历、管理与备份 */
 .share-card{padding:var(--cardpad);}
@@ -441,6 +444,9 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 }
 /* 触屏上没有 hover：原来按下去只有 transform:scale(.98)，几乎看不出反馈。
    这里补上颜色变化，手指按哪块立刻能看到 */
+/* 触屏按压反馈：CSS :active 在 iOS 上不可靠，这里由 JS 挂 .is-press 类，
+   按下立刻缩放+压暗，抬起就恢复，手机和电脑都能看到 */
+.is-press{transform:scale(.97) !important;filter:brightness(.94);}
 @media (hover:none){
   .opt:not(:disabled):active{border-color:var(--p1);background:var(--soft2);box-shadow:0 0 0 2px rgba(30,128,255,.14);}
   .entry:active,.lib-item:active{border-color:#B8D3F7;background:var(--soft);}
@@ -746,6 +752,16 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 .set-hint{font-size:var(--fs-aux);color:var(--grey2);line-height:1.6;}
 .set-btn{width:100%;background:none;border:0;font-family:inherit;text-align:left;}
 .set-v{font-size:var(--fs-aux);color:var(--grey2);font-weight:600;}
+
+/* ==========================================================
+   第十七轮：设置页分层 + 边缘右滑返回
+   常用开关留在「设置」，词库管理/备份/数据安全/自测收进「其它设置」
+   ========================================================== */
+.more-entry{margin-top:2px;border:1px solid var(--line);border-radius:14px;background:var(--soft);cursor:pointer;}
+.more-entry .set-k{flex:1;}
+.more-entry .set-v{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:56%;}
+.set-arrow{width:16px;height:16px;flex:0 0 16px;color:var(--grey2);}
+.more-entry:active{background:var(--soft2);}
 
 /* ==========================================================
    第十三轮：手机端底部按钮可见性
@@ -1101,7 +1117,7 @@ body.booting .app{pointer-events:none;}
     </div>
   </section>
 
-  <!-- ==================== 屏 8：设置与备份 ==================== -->
+  <!-- ==================== 屏 8：设置（只放常用开关） ==================== -->
   <section class="screen" data-screen="manage">
     <div class="wrap">
       <div class="card manage-card">
@@ -1109,7 +1125,7 @@ body.booting .app{pointer-events:none;}
           <button type="button" class="back-btn" id="manageBackBtn" aria-label="返回首页">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
-          <div class="share-title">设置与备份</div>
+          <div class="share-title">设置</div>
         </div>
         <div class="manage-scroll">
           <div class="set-group">
@@ -1144,14 +1160,35 @@ body.booting .app{pointer-events:none;}
               <input type="checkbox" class="switch" id="sfxToggle" checked>
             </label>
           </div>
+          <div class="manage-stat" id="manageStat"></div>
+          <button type="button" class="btn-secondary" id="restartBtn">这一轮从头开始</button>
+          <button type="button" class="set-row set-btn more-entry" id="moreEntryBtn">
+            <span class="set-k">其它设置</span>
+            <span class="set-v">词库管理 · 备份 · 数据安全</span>
+            <svg class="set-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 屏 8b：其它设置（词库管理 / 备份 / 数据安全 / 自测） ==================== -->
+  <section class="screen" data-screen="more">
+    <div class="wrap">
+      <div class="card manage-card">
+        <div class="share-head">
+          <button type="button" class="back-btn" id="moreBackBtn" aria-label="返回设置">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <div class="share-title">其它设置</div>
+        </div>
+        <div class="manage-scroll">
           <div class="set-group hidden" id="testGroup">
             <button type="button" class="set-row set-btn" id="entryTest">
               <span class="set-k">B 卷自测 · 130 题</span>
               <span class="set-v" id="metaTest">130 题</span>
             </button>
           </div>
-          <div class="manage-stat" id="manageStat"></div>
-          <button type="button" class="btn-secondary" id="restartBtn">这一轮从头开始</button>
           <div class="manage-desc">把进度导出成 JSON 文件存起来，换电脑或清缓存前先备份；以后选这个文件导回来，进度就回来了。</div>
           <div class="manage-actions">
             <button type="button" class="btn-primary" id="exportBtn">导出备份</button>
@@ -2988,6 +3025,12 @@ function bind(el, fn){
     last = t;
     fn(e);
   });
+  /* 按压反馈：CSS 的 :active 在 iOS 上触发不了，用 pointer 事件自己挂类才稳 */
+  el.addEventListener('pointerdown', function(){ el.classList.add('is-press'); }, { passive:true });
+  var release = function(){ el.classList.remove('is-press'); };
+  el.addEventListener('pointerup', release, { passive:true });
+  el.addEventListener('pointercancel', release, { passive:true });
+  el.addEventListener('pointerleave', release, { passive:true });
 }
 
 /* ==========================================================
@@ -3136,16 +3179,24 @@ function playFeedbackSound(ok){
     var AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     if (!sfxCtx) sfxCtx = new AC();
-    if (sfxCtx.state === 'suspended' && sfxCtx.resume) sfxCtx.resume();
-    var t = sfxCtx.currentTime + 0.01;
-    if (ok){
-      sfxNote(sfxCtx, 784, t, 0.10, 'sine', 0.22);
-      sfxNote(sfxCtx, 1175, t + 0.085, 0.15, 'sine', 0.19);
-    } else {
-      /* 低频本来就比高频听着小，同样的峰值增益显得很轻；这里把增益拉上来才对得上答对的音量 */
-      sfxNote(sfxCtx, 233, t, 0.14, 'triangle', 0.50);
-      sfxNote(sfxCtx, 175, t + 0.11, 0.21, 'triangle', 0.42);
+    var emit = function(){
+      var t = sfxCtx.currentTime + 0.02;
+      if (ok){
+        sfxNote(sfxCtx, 784, t, 0.10, 'sine', 0.22);
+        sfxNote(sfxCtx, 1175, t + 0.085, 0.15, 'sine', 0.19);
+      } else {
+        /* 低频本来就比高频听着小，同样的峰值增益显得很轻；这里把增益拉上来才对得上答对的音量 */
+        sfxNote(sfxCtx, 233, t, 0.14, 'triangle', 0.50);
+        sfxNote(sfxCtx, 175, t + 0.11, 0.21, 'triangle', 0.42);
+      }
+    };
+    /* 移动端 AudioContext 常常是 suspended：直接按 currentTime 排音会被静默丢掉，
+       必须等 resume() 兑现之后再排 */
+    if (sfxCtx.state === 'suspended' && sfxCtx.resume){
+      sfxCtx.resume().then(emit).catch(function(){});
+      return;
     }
+    emit();
   } catch (e) { /* 没有音频设备时静默跳过 */ }
 }
 
@@ -3756,9 +3807,10 @@ function renderQuizHead(q){
   $('quizNum').textContent = num;
 }
 /* 答对自动下一题：按钮里一条进度慢慢走满，走满就跳；手动点或回车立刻跳 */
-var autoTimer = null;
+var autoTimer = null, autoWatchdog = null;
 function clearAutoNext(){
   if (autoTimer){ clearTimeout(autoTimer); autoTimer = null; }
+  if (autoWatchdog){ clearTimeout(autoWatchdog); autoWatchdog = null; }
   $('quizNext').classList.remove('counting');
 }
 function scheduleAutoNext(cur){
@@ -3769,10 +3821,35 @@ function scheduleAutoNext(cur){
   btn.style.setProperty('--auto-ms', ms + 'ms');
   void btn.offsetWidth;
   btn.classList.add('counting');
-  autoTimer = setTimeout(function(){
-    autoTimer = null;
+  var advance = function(){
+    autoTimer = null; autoWatchdog = null;
     if (state.quiz === q && q.answered && state.screen === 'quiz') nextQuestion();
-  }, ms);
+  };
+  autoTimer = setTimeout(advance, ms);
+  /* 看门狗：慢网/后台节流时主定时器可能被拖住甚至吞掉，
+     到点还没跳就一定再补一次，别让用户卡在"答对了但没反应"那一屏 */
+  autoWatchdog = setTimeout(function(){
+    autoWatchdog = null;
+    if (state.quiz === q && q.answered && state.screen === 'quiz') nextQuestion();
+  }, ms + 1200);
+}
+/* 空闲时把后面几题的发音先取好：慢网下切题不用现等，也避免同时开一堆请求 */
+var prefetchSeq = 0;
+function prefetchAhead(q, n){
+  if (!q || !q.qs || document.hidden) return;
+  var conn = navigator.connection;
+  if (conn && (conn.saveData || /2g/.test(conn.effectiveType || ''))) return;
+  var seq = ++prefetchSeq;
+  var i = 0;
+  var step = function(){
+    if (seq !== prefetchSeq || document.hidden) return;   /* 已经换题了就别再预取旧的 */
+    if (i >= n) return;
+    var item = q.qs[q.index + 1 + i];
+    i++;
+    if (item && item.word) onlineAudio(item.word.w);
+    setTimeout(step, 260);                                 /* 拉开间隔，别跟当前这一题抢带宽 */
+  };
+  setTimeout(step, 700);
 }
 function renderQuiz(){
   var q = state.quiz;
@@ -3844,6 +3921,8 @@ function renderQuiz(){
     speakWord(cur.word.w);
     try { $('dictInput').focus({ preventScroll:true }); } catch (e) { $('dictInput').focus(); }
   }
+  /* 空闲时把后面 3 题的发音先取好：慢网下切题不用现等 */
+  prefetchAhead(q, 3);
 }
 
 function markAnswer(ok, chosenIdx, cur, typed, skipped){
@@ -4348,6 +4427,13 @@ function legacyCopy(text, done){
    设置与备份：每天几个 / 自动跳题 / 导出 / 导入 / 重置全部进度
    ========================================================== */
 function openManage(){ renderManage(); show('manage'); }
+/* 「其它设置」：词库管理、备份、数据安全、自测这些不常用的都收在这一层 */
+function openMore(){ renderMore(); show('more'); }
+function renderMore(){
+  renderSafeBox();
+  renderManageLibs();
+  renderCopy();          /* 里面会按当前词库决定 B 卷自测入口显不显示 */
+}
 /* 设置页的「数据安全」面板：显示各层备份的状态 */
 function renderSafeBox(){
   var box = $('safeStat');
@@ -4910,6 +4996,8 @@ bind($('restartBtn'), function(){
   askConfirm('从头开始这一轮？', '这一轮的答题记录会清空，从第 1 题重新做；错题本和已掌握的词不受影响。', '从头开始', function(){ newRound(); renderManage(); renderHome(); showToast('已从头开始，第 ' + db.practice.round + ' 轮'); });
 });
 bind($('manageBackBtn'), goHome);
+bind($('moreEntryBtn'), openMore);
+bind($('moreBackBtn'), function(){ renderManage(); show('manage'); });
 $('autoNextToggle').addEventListener('change', function(){
   db.settings.autoNext = this.checked;
   save();
@@ -4975,6 +5063,7 @@ function goBack(){
   var s = state.screen;
   if (s === 'study') leaveStudy();
   else if (s === 'quiz') leaveQuiz();
+  else if (s === 'more'){ renderManage(); show('manage'); }
   else if (s !== 'home') goHome();
 }
 document.addEventListener('keydown', function(e){
@@ -5032,6 +5121,65 @@ window.addEventListener('resize', fitViewport);
 window.addEventListener('orientationchange', fitViewport);
 if (window.visualViewport && visualViewport.addEventListener) visualViewport.addEventListener('resize', fitViewport);
 fitViewport();
+
+/* ==========================================================
+   锁住手动缩放
+   meta 的 user-scalable=no 从 iOS 10 起被 Safari 忽略，安卓上也不完全生效。
+   这里自己拦：iOS 的两指手势事件 + 所有双指 touchmove。
+   单指滑动（翻页、滚动）不受影响
+   ========================================================== */
+(function lockZoom(){
+  var block = function(e){ if (e.touches && e.touches.length > 1) e.preventDefault(); };
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(function(t){
+    document.addEventListener(t, function(e){ e.preventDefault(); }, { passive:false });
+  });
+  document.addEventListener('touchmove', block, { passive:false });
+  /* 双击放大：只有同一位置 300ms 内的第二下才拦，避免误伤正常点击 */
+  var lastTap = 0, lastX = 0, lastY = 0;
+  document.addEventListener('touchend', function(e){
+    var t = e.changedTouches && e.changedTouches[0];
+    if (!t) return;
+    var now = Date.now();
+    var near = Math.abs(t.clientX - lastX) < 30 && Math.abs(t.clientY - lastY) < 30;
+    if (now - lastTap < 300 && near) e.preventDefault();
+    lastTap = now; lastX = t.clientX; lastY = t.clientY;
+  }, { passive:false });
+})();
+
+/* ==========================================================
+   边缘右滑返回上一级
+   这是移动端约定俗成的交互（iOS 返回手势、很多 Android 与前端框架都这么做）：
+   从屏幕左边缘往右拖足够远就退回上一层。
+   只认左边缘起手 + 以横向为主的手势，不影响正常滚动和翻页
+   ========================================================== */
+(function edgeSwipeBack(){
+  var EDGE = 26;      /* 起手点必须在左侧 26px 内 */
+  var MIN_DX = 64;    /* 横向至少拖 64px */
+  var MAX_DY = 70;    /* 纵向抖动超过这个就当成滚动 */
+  var tracking = false, sx = 0, sy = 0;
+  document.addEventListener('touchstart', function(e){
+    if (e.touches.length !== 1){ tracking = false; return; }
+    var t = e.touches[0];
+    tracking = t.clientX <= EDGE;
+    sx = t.clientX; sy = t.clientY;
+  }, { passive:true });
+  document.addEventListener('touchmove', function(e){
+    if (!tracking || e.touches.length !== 1) return;
+    var t = e.touches[0];
+    if (Math.abs(t.clientY - sy) > Math.abs(t.clientX - sx) * 1.2) tracking = false;  /* 竖向为主 → 交给滚动 */
+  }, { passive:true });
+  document.addEventListener('touchend', function(e){
+    if (!tracking) return;
+    tracking = false;
+    var t = e.changedTouches && e.changedTouches[0];
+    if (!t) return;
+    var dx = t.clientX - sx, dy = Math.abs(t.clientY - sy);
+    if (dx < MIN_DX || dy > MAX_DY) return;
+    if (openMask()) return;          /* 有弹层时交给弹层自己处理 */
+    if (state.screen === 'home') return;
+    goBack();
+  }, { passive:true });
+})();
 
 /* ==========================================================
    初始化：先读本地进度，再渲染首页并停在主页（不自动进学习页）
