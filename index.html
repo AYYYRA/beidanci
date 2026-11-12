@@ -106,8 +106,9 @@ input{font-family:inherit;}
   padding-left:calc(16px + env(safe-area-inset-left, 0px));
   flex-direction:column;
 }
-.screen.active{display:flex;animation:screenIn .18s ease-out;}
-/* 换屏：只做淡入淡出，不做位移（用户明确不喜欢位移） */
+.screen.active{display:flex;}
+/* 换屏只做淡入（无位移）。由 app.js 在每次切换时重新挂 .screen-fade 触发 */
+.screen.active.screen-fade{animation:screenIn .2s ease-out;}
 @keyframes screenIn{from{opacity:0;}to{opacity:1;}}
 /* 换题：同样只淡入，比换屏更快 */
 .quiz-body.q-in{animation:qIn .14s ease-out;}
@@ -271,6 +272,10 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
   font-size:var(--fs-body);line-height:1.35;
 }
 .opt .opt-k{width:24px;height:24px;flex:0 0 24px;border-radius:7px;background:var(--soft2);color:var(--p1);font-size:var(--fs-aux);font-weight:700;display:flex;align-items:center;justify-content:center;}
+/* 答题后显示在这条释义右侧的英文单词 */
+.opt .opt-en{margin-left:auto;padding-left:10px;color:var(--grey2);font-size:var(--fs-aux);font-weight:600;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45%;}
+.opt.is-right .opt-en{color:var(--ok);font-weight:800;}
 .opt.is-right{border-color:var(--green);background:var(--ok-soft);}
 .opt.is-wrong{border-color:var(--danger);background:var(--danger-soft);}
 .opt.is-right .opt-k{background:var(--green);color:#fff;}
@@ -3093,12 +3098,27 @@ var state = {
   pasteRows:null, listFilter:'all',
   wbScope:'lib', wbFilter:'all', wbOpen:''
 };
+/* 换屏。所有非手势触发的切换都走一次淡入：
+   用「移除 class → 强制重排 → 加回 class」确保动画每次都重播
+   （只靠 display 变化不可靠，浏览器会把同一帧里的显示变化合并掉） */
+var skipNextFade = false;
 function show(name){
   state.screen = name;
   var screens = document.querySelectorAll('.screen');
   for (var i=0;i<screens.length;i++){
-    screens[i].classList.toggle('active', screens[i].getAttribute('data-screen') === name);
+    var el = screens[i], on = el.getAttribute('data-screen') === name;
+    el.classList.toggle('active', on);
+    el.classList.remove('screen-fade');
+    if (on){
+      if (!skipNextFade){
+        void el.offsetWidth;          /* 强制重排，动画才会从头播 */
+        el.classList.add('screen-fade');
+      } else {
+        el.style.opacity = '';        /* 侧滑已经给过反馈，这一屏不再叠淡入 */
+      }
+    }
   }
+  skipNextFade = false;
 }
 
 /* 每个 button：点完取消鼠标焦点（键盘焦点保留）+ 150ms 内重复点击只算一次 */
@@ -4083,6 +4103,14 @@ function markAnswer(ok, chosenIdx, cur, typed, skipped){
       btns[i].disabled = true;
       if (cur.options[i] === cur.answer) btns[i].classList.add('is-right');
       else if (i === chosenIdx && !ok) btns[i].classList.add('is-wrong');
+      /* 做完选择后，把这条释义对应的英文单词标在这一行的右侧——
+         不用自己去对照正确答案，每一条都直接写明白 */
+      if (cur.optionWords && cur.optionWords[i] && cur.optionWords[i].w){
+        var en = document.createElement('span');
+        en.className = 'opt-en';
+        en.textContent = cur.optionWords[i].w;
+        btns[i].appendChild(en);
+      }
     }
   } else {
     $('dictInput').disabled = true;
@@ -4559,9 +4587,15 @@ function legacyCopy(text, done){
 /* ==========================================================
    设置与备份：每天几个 / 自动跳题 / 导出 / 导入 / 重置全部进度
    ========================================================== */
-function openManage(){ renderManage(); show('manage'); }
+/* 先切屏再渲染：渲染（尤其首次要读 IndexedDB、铺词库列表）会占住主线程，
+   把淡入动画的开头堵死。挪到下一帧渲染，动画就能立刻跑起来 */
+function deferRender(fn){
+  if (window.requestAnimationFrame) requestAnimationFrame(function(){ try { fn(); } catch (e) {} });
+  else try { fn(); } catch (e) {}
+}
+function openManage(){ show('manage'); deferRender(renderManage); }
 /* 「其它设置」：词库管理、备份、数据安全、自测这些不常用的都收在这一层 */
-function openMore(){ renderMore(); show('more'); }
+function openMore(){ show('more'); deferRender(renderMore); }
 function renderMore(){
   renderSafeBox();
   renderManageLibs();
@@ -5437,7 +5471,8 @@ fitViewport();
       setX(node, (window.innerWidth || 360));
       setTimeout(function(){
         resetNode(node);
-        goBack();                                    /* 先滑出去，再切屏 */
+        skipNextFade = true;      /* 侧滑已经滑出去了，目标屏不用再淡入 */
+        goBack();
       }, 170);
     } else {
       setX(node, 0);                                 /* 没滑够就弹回去 */
