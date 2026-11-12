@@ -73,28 +73,29 @@
   --chrome:#F7EFE4;
 }
 
-/* ---------- 深色：只用黑白灰。色阶拉开：底→卡→浮起→描边，四层分明 ---------- */
+/* ---------- 深色：只用黑白灰。
+   明度大胆拉开：背景近黑 → 卡片中灰 → 浮起更亮 → 描边清晰，
+   否则一片糊成深灰，看着沉闷、层次也分不出来 ---------- */
 [data-theme="dark"]{
-  --p1:#EDEDED; --p2:#AFAFAF;
-  --ink:#F5F5F5; --grey:#C4C4C4; --grey2:#9E9E9E;
-  --line:#3D3D3D; --soft:#1C1C1C; --soft2:#232323;
-  --card:#151515;
-  /* 背景比卡片更暗，卡片才"浮"起来；原来两者太接近显得发闷 */
-  --bg-grad:linear-gradient(180deg,#080808 0%,#111111 100%);
-  --hover-line:#5A5A5A; --bar-cur:#4A4A4A; --switch-off:#454545; --switch-knob:#E8E8E8;
-  --ok:#FFFFFF; --ok-soft:#232323; --ok-line:#6E6E6E;
-  --warn:#D6D6D6; --warn-soft:#212121; --warn-soft-2:#1A1A1A; --warn-line:#4A4A4A; --warn-ink:#E0E0E0;
-  --danger:#FF7A7A; --danger-soft:#2A1919; --danger-line:#5C3232;
-  --tip-ink:#DADADA; --tip-soft:#212121;
-  --on-primary:#0A0A0A;
-  --shadow:0 14px 36px rgba(0,0,0,.70), 0 2px 8px rgba(0,0,0,.50);
-  --shadow-soft:0 2px 10px rgba(0,0,0,.55);
-  --shadow-mid:0 8px 22px rgba(0,0,0,.65);
-  --glow-primary:0 8px 20px rgba(0,0,0,.75);
-  --press-ring:rgba(255,255,255,.22);
-  --mask:rgba(0,0,0,.62);
-  --toast-bg:rgba(245,245,245,.95); --toast-ink:#111111;
-  --chrome:#080808;
+  --p1:#FFFFFF; --p2:#C8C8C8;
+  --ink:#FAFAFA; --grey:#CFCFCF; --grey2:#A8A8A8;
+  --line:#585858; --soft:#2C2C2C; --soft2:#383838;
+  --card:#1E1E1E;
+  --bg-grad:linear-gradient(180deg,#000000 0%,#0C0C0C 100%);
+  --hover-line:#7A7A7A; --bar-cur:#6A6A6A; --switch-off:#5E5E5E; --switch-knob:#FFFFFF;
+  --ok:#FFFFFF; --ok-soft:#333333; --ok-line:#8A8A8A;
+  --warn:#F0F0F0; --warn-soft:#2E2E2E; --warn-soft-2:#242424; --warn-line:#5E5E5E; --warn-ink:#FAFAFA;
+  --danger:#FF8A8A; --danger-soft:#3D1F1F; --danger-line:#8A4A4A;
+  --tip-ink:#F0F0F0; --tip-soft:#2E2E2E;
+  --on-primary:#000000;
+  --shadow:0 16px 40px rgba(0,0,0,.85), 0 2px 10px rgba(0,0,0,.65);
+  --shadow-soft:0 3px 12px rgba(0,0,0,.70);
+  --shadow-mid:0 10px 26px rgba(0,0,0,.80);
+  --glow-primary:0 8px 24px rgba(255,255,255,.16);
+  --press-ring:rgba(255,255,255,.34);
+  --mask:rgba(0,0,0,.72);
+  --toast-bg:rgba(250,250,250,.96); --toast-ink:#000000;
+  --chrome:#000000;
 }
 /* 深色下主按钮是浅底的，文字和图标要反成深色，否则白底白字看不见 */
 [data-theme="dark"] .btn-primary{color:var(--on-primary);}
@@ -216,7 +217,7 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
   color:var(--on-primary);font-size:var(--fs-body);font-weight:600;
   box-shadow:var(--glow-primary);
 }
-.btn-primary.is-disabled,.btn-secondary.is-disabled{background:var(--line);color:var(--grey2);box-shadow:none;cursor:not-allowed;border-color:var(--line);}
+.btn-primary.is-disabled,.btn-secondary.is-disabled{background:var(--soft2);color:var(--grey2);box-shadow:none;cursor:not-allowed;border-color:var(--line);}
 #quizActions button{width:100%;}
 .btn-secondary{
   width:100%;padding:13px 18px;border-radius:999px;
@@ -890,9 +891,9 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 }
 .boot.hide{opacity:0;pointer-events:none;}
 .boot-inner{display:flex;flex-direction:column;align-items:center;gap:14px;padding:0 32px;text-align:center;}
-.boot-bar{width:min(240px,62vw);height:6px;border-radius:999px;background:var(--line);overflow:hidden;}
+.boot-bar{width:min(240px,62vw);height:6px;border-radius:999px;background:var(--soft2);overflow:hidden;}
 .boot-bar i{display:block;height:100%;width:8%;border-radius:999px;background:linear-gradient(90deg,var(--p1),var(--p2));transition:width .35s ease;}
-.boot-hint{font-size:13px;color:var(--grey);min-height:18px;}
+.boot-hint{font-size:13px;color:var(--grey2);min-height:18px;letter-spacing:.3px;}
 /* 遮罩期间别让底下的按钮抢到点击和键盘焦点 */
 body.booting .app{pointer-events:none;}
 
@@ -4707,7 +4708,7 @@ function setQType(q){
 function normTheme(t){ return (t === 'warm' || t === 'dark') ? t : 'blue'; }
 /* 手机浏览器顶部状态栏/底部地址栏的颜色取自 <meta name="theme-color">，
    静态写死会在换主题后仍然是蓝色——所以每次换主题都同步改这里 */
-var THEME_CHROME = { blue:'#EAF3FF', warm:'#F7EFE4', dark:'#080808' };
+var THEME_CHROME = { blue:'#EAF3FF', warm:'#F7EFE4', dark:'#000000' };
 function paintTheme(t){
   var v = normTheme(t);
   if (v === 'blue') document.documentElement.removeAttribute('data-theme');
