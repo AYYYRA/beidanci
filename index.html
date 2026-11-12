@@ -56,17 +56,17 @@ input{font-family:inherit;}
   padding-left:calc(16px + env(safe-area-inset-left, 0px));
   flex-direction:column;
 }
-.screen.active{display:flex;animation:screenIn .22s cubic-bezier(.2,.85,.3,1);}
-/* 换屏：轻微上浮 + 淡入，够看出是"换了一页"但不拖沓 */
-@keyframes screenIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
-/* 换题：题目内容单独走一个小动画，比整屏切换更快 */
-.quiz-body.q-in{animation:qIn .16s ease-out;}
-@keyframes qIn{from{opacity:0;transform:translateY(7px);}to{opacity:1;transform:translateY(0);}}
-/* 弹层：淡入 + 轻微放大 */
-.modal-mask:not(.hidden){animation:maskIn .16s ease-out;}
-.modal{animation:modalIn .2s cubic-bezier(.2,.9,.3,1);}
+.screen.active{display:flex;animation:screenIn .18s ease-out;}
+/* 换屏：只做淡入淡出，不做位移（用户明确不喜欢位移） */
+@keyframes screenIn{from{opacity:0;}to{opacity:1;}}
+/* 换题：同样只淡入，比换屏更快 */
+.quiz-body.q-in{animation:qIn .14s ease-out;}
+@keyframes qIn{from{opacity:0;}to{opacity:1;}}
+/* 弹层：淡入即可 */
+.modal-mask:not(.hidden){animation:maskIn .14s ease-out;}
+.modal{animation:modalIn .16s ease-out;}
 @keyframes maskIn{from{opacity:0;}to{opacity:1;}}
-@keyframes modalIn{from{opacity:0;transform:scale(.96) translateY(6px);}to{opacity:1;transform:none;}}
+@keyframes modalIn{from{opacity:0;}to{opacity:1;}}
 @media (prefers-reduced-motion: reduce){
   .screen.active,.quiz-body.q-in,.modal,.modal-mask:not(.hidden),.fb{animation:none !important;}
   *{transition-duration:.01ms !important;}
@@ -762,6 +762,10 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 .more-entry .set-v{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:56%;}
 .set-arrow{width:16px;height:16px;flex:0 0 16px;color:var(--grey2);}
 .more-entry:active{background:var(--soft2);}
+/* 自动跳题关掉时，速度那一行变淡，表明不生效 */
+.auto-ms-row{transition:opacity .15s ease;}
+.auto-ms-row.is-off{opacity:.45;}
+.auto-ms-row.is-off .seg button{cursor:not-allowed;}
 
 /* ==========================================================
    第十三轮：手机端底部按钮可见性
@@ -1133,6 +1137,16 @@ body.booting .app{pointer-events:none;}
               <span class="set-k">答对后自动下一题</span>
               <input type="checkbox" class="switch" id="autoNextToggle" checked>
             </label>
+            <div class="set-row set-col auto-ms-row" id="autoMsRow">
+              <span class="set-k">跳题速度</span>
+              <div class="seg seg-sm" id="autoMsSeg">
+                <button type="button" data-ms="120">很快</button>
+                <button type="button" data-ms="840">标准</button>
+                <button type="button" data-ms="1600">慢</button>
+                <button type="button" data-ms="2600">更慢</button>
+              </div>
+              <div class="set-hint" id="autoMsHint">答对后停留 0.84 秒再跳到下一题</div>
+            </div>
           </div>
           <div class="set-group">
             <div class="set-row set-col">
@@ -3213,7 +3227,7 @@ function freshDb(){
   return {
     activeLib:BUILTIN_LIBS[0].id, libs:null, vault:{}, libExtra:{},
     practice:freshPractice(), wrong:{}, mastered:{},
-    settings:{ toeflSeen:true, wbV2:true, accent:'us', qtype:'choice', sfx:true }, selftest:null
+    settings:{ toeflSeen:true, wbV2:true, accent:'us', qtype:'choice', sfx:true, autoNextMs:AUTO_NEXT_MS }, selftest:null
   };
 }
 /* ==========================================================
@@ -3817,7 +3831,9 @@ function scheduleAutoNext(cur){
   clearAutoNext();
   if (db.settings.autoNext === false) return;
   var q = state.quiz, btn = $('quizNext');
-  var ms = cur.type === 'choice' ? AUTO_NEXT_MS : AUTO_NEXT_MS + 420;
+  var base = db.settings.autoNextMs > 0 ? db.settings.autoNextMs : AUTO_NEXT_MS;
+  /* 填空题多给一点时间看清答案 */
+  var ms = cur.type === 'choice' ? base : Math.max(base + 420, base * 1.5);
   btn.style.setProperty('--auto-ms', ms + 'ms');
   void btn.offsetWidth;
   btn.classList.add('counting');
@@ -4473,6 +4489,22 @@ function renderManage(){
     var qbtns = qseg.querySelectorAll('button'), qcur = db.settings.qtype === 'fill' ? 'fill' : 'choice', j;
     for (j=0;j<qbtns.length;j++) qbtns[j].classList.toggle('on', qbtns[j].getAttribute('data-q') === qcur);
   }
+  /* 自动跳题速度 */
+  var autoOn = db.settings.autoNext !== false;
+  var curMs = db.settings.autoNextMs > 0 ? db.settings.autoNextMs : AUTO_NEXT_MS;
+  var mseg = $('autoMsSeg');
+  if (mseg){
+    var mbtns = mseg.querySelectorAll('button'), k;
+    for (k=0;k<mbtns.length;k++) mbtns[k].classList.toggle('on', Number(mbtns[k].getAttribute('data-ms')) === curMs);
+  }
+  var mrow = $('autoMsRow');
+  if (mrow) mrow.classList.toggle('is-off', !autoOn);
+  var mhint = $('autoMsHint');
+  if (mhint){
+    mhint.textContent = !autoOn
+      ? '关掉自动跳题后，这档速度不生效'
+      : '答对后停留 ' + (curMs < 1000 ? (curMs / 1000).toFixed(2).replace(/0$/, '') : (curMs / 1000).toFixed(1)) + ' 秒再跳到下一题';
+  }
   renderCopy();
   renderSafeBox();
   renderManageLibs();
@@ -4483,6 +4515,15 @@ function setQType(q){
   save();
   renderManage();
   showToast(db.settings.qtype === 'fill' ? '题型已切到填空题' : '题型已切到选择题');
+}
+/* 自动跳题速度：毫秒值，存进设置 */
+function setAutoNextMs(ms){
+  var v = Number(ms);
+  if (!(v > 0)) return;
+  db.settings.autoNextMs = v;
+  save();
+  renderManage();
+  showToast('自动跳题：' + (v < 1000 ? (v / 1000).toFixed(2).replace(/0$/, '') + ' 秒' : (v / 1000).toFixed(1) + ' 秒') + '后跳到下一题');
 }
 /* 换口音：清掉已缓存的在线音频，下一题开始就是新口音 */
 function setAccent(a){
@@ -4538,7 +4579,7 @@ function openResetConfirm(){
 }
 function resetAll(){
   var keepAuto = db.settings.autoNext, keepAccent = db.settings.accent;
-  var keepQType = db.settings.qtype, keepSfx = db.settings.sfx;
+  var keepQType = db.settings.qtype, keepSfx = db.settings.sfx, keepMs = db.settings.autoNextMs;
   var keepLibs = db.libs, keepExtra = db.libExtra, keepActive = db.activeLib;
   try { localStorage.removeItem(STORE_KEY); }
   catch (e){ showWarn(); }
@@ -4546,6 +4587,7 @@ function resetAll(){
   if (keepAuto === false) db.settings.autoNext = false;
   if (keepAccent) db.settings.accent = keepAccent;
   if (keepQType) db.settings.qtype = keepQType;
+  if (keepMs > 0) db.settings.autoNextMs = keepMs;
   if (keepSfx === false) db.settings.sfx = false;
   if (keepLibs && keepLibs.length) db.libs = keepLibs;
   if (keepExtra) db.libExtra = keepExtra;
@@ -4911,6 +4953,13 @@ bind($('libAllWrong'), function(){ closeLibModal(); openWrong('all'); });
     (function(el){ bind(el, function(){ setQType(el.getAttribute('data-q')); }); })(segs[i]);
   }
 })();
+/* 自动跳题速度 */
+(function(){
+  var segs = $('autoMsSeg').querySelectorAll('button'), i;
+  for (i=0;i<segs.length;i++){
+    (function(el){ bind(el, function(){ setAutoNextMs(el.getAttribute('data-ms')); }); })(segs[i]);
+  }
+})();
 $('sfxToggle').addEventListener('change', function(){
   db.settings.sfx = this.checked;
   save();
@@ -5134,11 +5183,15 @@ fitViewport();
     document.addEventListener(t, function(e){ e.preventDefault(); }, { passive:false });
   });
   document.addEventListener('touchmove', block, { passive:false });
-  /* 双击放大：只有同一位置 300ms 内的第二下才拦，避免误伤正常点击 */
+  /* 双击放大：只在空白处拦。原来对所有 touchend 都 preventDefault，
+     会把按钮的合成 click 一起取消掉——连点「下一题/下一个」第二下就没反应了 */
   var lastTap = 0, lastX = 0, lastY = 0;
   document.addEventListener('touchend', function(e){
     var t = e.changedTouches && e.changedTouches[0];
     if (!t) return;
+    var onControl = e.target && e.target.closest &&
+      e.target.closest('button, input, textarea, select, a, label, .opt, .entry, .lib-item, .wl-item, .wb-item');
+    if (onControl) return;                     /* 控件上的连点照常工作 */
     var now = Date.now();
     var near = Math.abs(t.clientX - lastX) < 30 && Math.abs(t.clientY - lastY) < 30;
     if (now - lastTap < 300 && near) e.preventDefault();
@@ -5160,7 +5213,7 @@ fitViewport();
   document.addEventListener('touchstart', function(e){
     if (e.touches.length !== 1){ tracking = false; return; }
     var t = e.touches[0];
-    tracking = t.clientX <= EDGE;
+    tracking = t.clientX <= EDGE;      /* 只有贴着左边缘起手才算返回手势 */
     sx = t.clientX; sy = t.clientY;
   }, { passive:true });
   document.addEventListener('touchmove', function(e){
@@ -5178,6 +5231,37 @@ fitViewport();
     if (openMask()) return;          /* 有弹层时交给弹层自己处理 */
     if (state.screen === 'home') return;
     goBack();
+  }, { passive:true });
+})();
+
+/* ==========================================================
+   单词卡左右滑动翻页
+   只有左边缘那条窄带留给"返回"，其余区域横滑就是翻卡，
+   两者按起手位置区分，不会互相抢
+   ========================================================== */
+(function cardSwipe(){
+  var EDGE = 26, MIN_DX = 48, MAX_DY = 80;
+  var active = false, sx = 0, sy = 0;
+  document.addEventListener('touchstart', function(e){
+    if (e.touches.length !== 1 || state.screen !== 'study'){ active = false; return; }
+    var t = e.touches[0];
+    active = t.clientX > EDGE;        /* 边缘那条留给返回手势 */
+    sx = t.clientX; sy = t.clientY;
+  }, { passive:true });
+  document.addEventListener('touchmove', function(e){
+    if (!active || e.touches.length !== 1) return;
+    var t = e.touches[0];
+    if (Math.abs(t.clientY - sy) > Math.abs(t.clientX - sx) * 1.2) active = false;  /* 竖向 → 交给滚动 */
+  }, { passive:true });
+  document.addEventListener('touchend', function(e){
+    if (!active) return;
+    active = false;
+    var t = e.changedTouches && e.changedTouches[0];
+    if (!t || state.screen !== 'study') return;
+    var dx = t.clientX - sx, dy = Math.abs(t.clientY - sy);
+    if (Math.abs(dx) < MIN_DX || dy > MAX_DY) return;
+    if (openMask()) return;
+    if (dx < 0) nextCard(); else prevCard();    /* 左滑 → 下一个，右滑 → 上一个 */
   }, { passive:true });
 })();
 
