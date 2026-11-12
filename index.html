@@ -727,6 +727,15 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
    ========================================================== */
 .safe-stat{font-size:var(--fs-aux);color:var(--grey);line-height:1.85;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;}
 .safe-stat b.no{color:var(--danger);}
+
+/* ==========================================================
+   第十五轮：答错时告诉你「选错的那条释义其实是哪个词」
+   ========================================================== */
+.fb .pick-line{font-size:var(--fs-aux);color:var(--grey);line-height:1.7;padding-top:6px;margin-top:2px;border-top:1px dashed var(--line);}
+.fb .pick-line b{color:var(--danger);font-weight:800;}
+/* 音标+词性整体不拆行，免得 /ˈvʌlnərəbl/ 和 adj. 被挤成两截 */
+.fb .pick-line span{color:var(--grey2);white-space:nowrap;}
+.fb .pick-line.hidden{display:none;}
 </style>
 </head>
 <body>
@@ -915,6 +924,7 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
         <div id="feedbackPane" class="fb hidden">
           <div class="feedback" id="feedbackText"></div>
           <div class="answer-line" id="answerLine"></div>
+          <div class="pick-line hidden" id="pickLine"></div>
           <div class="ex-line hidden" id="exLine"></div>
           <div class="tip-line hidden" id="tipLine"></div>
         </div>
@@ -2513,6 +2523,7 @@ var JUNIOR_A = [
 /* 高中英语核心词汇（约 140 词）：高考高频，比初中进阶一档 */
 var SENIOR_A = [
   {w:'abandon', ph:'/əˈbændən/', pos:'v.', cn:'放弃；抛弃', en:'The villagers had to abandon their homes before the flood arrived.', zh:'洪水来临前，村民们不得不离开家园。'},
+  {w:'absolutely', ph:'/ˈæbsəluːtli/', pos:'adv.', cn:'绝对地；完全地', en:'I absolutely agree with your view on this important question.', zh:'在这个重要问题上，我完全同意你的看法。'},
   {w:'absorb', ph:'/əbˈzɔːb/', pos:'v.', cn:'吸收；吸引', en:'Plants absorb water and nutrients through their roots every day.', zh:'植物每天通过根部吸收水分和养分。'},
   {w:'abstract', ph:'/ˈæbstrækt/', pos:'adj.', cn:'抽象的', en:'The idea of freedom is too abstract for young children.', zh:'自由这个概念对幼儿来说太抽象了。'},
   {w:'access', ph:'/ˈækses/', pos:'n.', cn:'通道；使用权', en:'Every student should have free access to the school library.', zh:'每个学生都应该可以免费使用学校图书馆。'},
@@ -2528,7 +2539,7 @@ var SENIOR_A = [
   {w:'anxious', ph:'/ˈæŋkʃəs/', pos:'adj.', cn:'焦虑的；渴望的', en:'She felt anxious about the exam results for several days.', zh:'她为考试成绩焦虑了好几天。'},
   {w:'appreciate', ph:'/əˈpriːʃieɪt/', pos:'v.', cn:'欣赏；感激', en:'I really appreciate your help with the science project.', zh:'非常感谢你帮助我完成这个科学项目。'},
   {w:'approach', ph:'/əˈprəʊtʃ/', pos:'n.', cn:'方法；途径', en:'We need a new approach to this problem.', zh:'我们需要用新方法解决这个问题。'},
-  {w:'approve', ph:'/əˈpruːv/', pos:'v.', cn:'批准；赞成', en:'The committee will approve the plan after a careful discussion.', zh:'委员会将在认真讨论后批准这个计划。'},
+  {w:'approve', ph:'/əˈpruːv/', pos:'v.', cn:'批准；赞成', en:'The council will approve the plan after a careful discussion.', zh:'委员会将在认真讨论后批准这个计划。'},
   {w:'aspect', ph:'/ˈæspekt/', pos:'n.', cn:'方面', en:'We must consider every aspect of the problem before deciding.', zh:'做决定前我们必须考虑问题的每个方面。'},
   {w:'attempt', ph:'/əˈtempt/', pos:'v.', cn:'尝试；试图', en:'He made one last attempt to solve the difficult problem.', zh:'他做了最后一次尝试来解这道难题。'},
   {w:'attitude', ph:'/ˈætɪtjuːd/', pos:'n.', cn:'态度；看法', en:'A positive attitude can help you deal with daily pressure.', zh:'积极的态度能帮助你应对日常压力。'},
@@ -2563,7 +2574,6 @@ var SENIOR_A = [
   {w:'declare', ph:'/dɪˈkleə/', pos:'v.', cn:'宣布；声明', en:'The government declared the area a national park last year.', zh:'政府去年宣布该地区为国家公园。'},
   {w:'decrease', ph:'/dɪˈkriːs/', pos:'v.', cn:'减少；降低', en:'The number of wild birds has decreased sharply since 2010.', zh:'自2010年以来，野生鸟类的数量急剧减少。'},
   {w:'defend', ph:'/dɪˈfend/', pos:'v.', cn:'保卫；辩护', en:'He stood up to defend his friend against unfair blame.', zh:'他站出来为朋友辩护，反驳不公正的指责。'},
-  {w:'definitely', ph:'/ˈdefɪnətli/', pos:'adv.', cn:'肯定地；确定地', en:'I will definitely visit the museum again next summer.', zh:'明年夏天我一定会再去参观这个博物馆。'},
   {w:'demand', ph:'/dɪˈmɑːnd/', pos:'v.', cn:'要求；需求', en:'Customers demand better service and lower prices these days.', zh:'如今顾客要求更好的服务和更低的价格。'},
   {w:'deny', ph:'/dɪˈnaɪ/', pos:'v.', cn:'否认；拒绝', en:'He continues to deny any connection with the missing money.', zh:'他继续否认与那笔失踪的钱有任何关系。'},
   {w:'depend', ph:'/dɪˈpend/', pos:'v.', cn:'依靠；取决于', en:'Whether we go out depends on the weather tomorrow.', zh:'我们是否出去取决于明天的天气。'},
@@ -2573,7 +2583,6 @@ var SENIOR_A = [
   {w:'economy', ph:'/ɪˈkɒnəmi/', pos:'n.', cn:'经济；节约', en:'The local economy depends heavily on tourism and farming.', zh:'当地经济严重依赖旅游业和农业。'},
   {w:'efficient', ph:'/ɪˈfɪʃnt/', pos:'adj.', cn:'高效的；有效率的', en:'A more efficient system would save both time and money.', zh:'更高效的系统会节省时间和金钱。'},
   {w:'element', ph:'/ˈelɪmənt/', pos:'n.', cn:'元素；要素', en:'Trust is a key element of any good friendship.', zh:'信任是任何良好友谊的关键要素。'},
-  {w:'emergency', ph:'/ɪˈmɜːdʒənsi/', pos:'n.', cn:'紧急情况', en:'In an emergency, stay calm and call for help.', zh:'遇到紧急情况时，保持冷静并呼救。'},
   {w:'emotion', ph:'/ɪˈməʊʃn/', pos:'n.', cn:'情感；情绪', en:'Music can express emotions that words cannot describe.', zh:'音乐能表达语言无法描述的情感。'},
   {w:'employ', ph:'/ɪmˈplɔɪ/', pos:'v.', cn:'雇用；使用', en:'The factory employs more than two hundred local workers.', zh:'这家工厂雇用了两百多名当地工人。'},
   {w:'enormous', ph:'/ɪˈnɔːməs/', pos:'adj.', cn:'巨大的；庞大的', en:'The project needs an enormous amount of time and money.', zh:'这个项目需要大量的时间和金钱。'},
@@ -2650,6 +2659,7 @@ var SENIOR_A = [
   {w:'thus', ph:'/ðʌs/', pos:'adv.', cn:'因此；这样', en:'The two ideas are linked, and thus form a clear argument.', zh:'这两个观点相互关联，因而形成一个清晰的论证。'},
   {w:'unless', ph:'/ənˈles/', pos:'conj.', cn:'除非；如果不', en:'You cannot enter the lab unless a teacher is present.', zh:'除非有老师在场，否则你不能进入实验室。'},
   {w:'unusual', ph:'/ʌnˈjuːʒuəl/', pos:'adj.', cn:'不寻常的；罕见的', en:'It is unusual for him to arrive late on weekdays.', zh:'他工作日迟到是不寻常的。'},
+  {w:'victim', ph:'/ˈvɪktɪm/', pos:'n.', cn:'受害者；牺牲品', en:'The victims of the flood received help from many volunteers.', zh:'洪水的受害者得到了许多志愿者的帮助。'},
   {w:'whether', ph:'/ˈweðə/', pos:'conj.', cn:'是否', en:'We are not sure whether the plan will work.', zh:'我们不确定这个计划是否可行。'},
   {w:'wisdom', ph:'/ˈwɪzdəm/', pos:'n.', cn:'智慧；才智', en:'Local farmers share their wisdom about weather and soil.', zh:'当地农民分享他们关于天气和土壤的智慧。'}
 ];
@@ -3513,7 +3523,8 @@ function clashes(a, b){
   for (i=0;i<A.length;i++) if (B.indexOf(A[i]) >= 0) return true;
   return false;
 }
-/* 干扰项：同一批词里随机取 3 个，优先同词性（免得靠词性一眼排除），近义的跳过 */
+/* 干扰项：同一批词里随机取 3 个，优先同词性（免得靠词性一眼排除），近义的跳过。
+   返回的是「词对象」数组而不是纯释义，这样答错时能告诉用户「你选的那条释义其实是哪个词」 */
 function pickOptions(word, pool){
   var others = shuffle(pool.filter(function(x){ return x.w !== word.w && x.cn !== word.cn; }));
   var cand = others.filter(function(x){ return x.pos === word.pos; })
@@ -3521,15 +3532,21 @@ function pickOptions(word, pool){
   var picked = [], j, k, ok;
   for (j=0;j<cand.length && picked.length<3;j++){
     ok = !clashes(word.cn, cand[j].cn);
-    for (k=0;k<picked.length && ok;k++) if (picked[k] === cand[j].cn || clashes(picked[k], cand[j].cn)) ok = false;
-    if (ok) picked.push(cand[j].cn);
+    for (k=0;k<picked.length && ok;k++) if (picked[k].cn === cand[j].cn || clashes(picked[k].cn, cand[j].cn)) ok = false;
+    if (ok) picked.push(cand[j]);
   }
-  return shuffle([word.cn].concat(picked));
+  picked.push(word);
+  return shuffle(picked);
 }
 function choiceQ(word, pool){
   /* 自建小词库凑不够 4 个选项时，从内置词典借干扰项 */
   if (!pool || pool.length < 8) pool = (pool || []).concat(DICT_LIST);
-  return { type:'choice', word:word, options:pickOptions(word, pool), answer:word.cn };
+  var picked = pickOptions(word, pool);
+  return {
+    type:'choice', word:word, answer:word.cn,
+    options:picked.map(function(o){ return o.cn; }),   /* 界面上显示的释义 */
+    optionWords:picked                                  /* 每条释义对应的词，答错时用 */
+  };
 }
 /* 补全单词：例句里把这个词（含 -s/-ed/-ing 等变形）挖空、只留首字母；例句里找不到就退回听音拼写 */
 function fillQ(word){
@@ -3638,6 +3655,7 @@ function renderQuiz(){
   $('feedbackPane').classList.add('hidden');
   $('tipLine').classList.add('hidden');
   $('exLine').classList.add('hidden');
+  $('pickLine').classList.add('hidden');
   $('clueText').classList.add('hidden');
   $('dictInput').value = '';
   $('dictInput').disabled = false;
@@ -3730,6 +3748,18 @@ function markAnswer(ok, chosenIdx, cur, typed, skipped){
   var showAns = !ok || cur.type !== 'choice';
   $('answerLine').classList.toggle('hidden', !showAns);
   $('answerLine').innerHTML = (ok ? '' : '正确答案 ') + '<b>' + esc(w.w) + '</b><span>' + esc(w.ph) + '</span>' + esc(w.pos + ' ' + w.cn);
+  /* 答错时告诉用户「你选的那条释义其实是哪个词」——只知道答错不够，得知道错在哪个词上 */
+  var pl = $('pickLine');
+  var picked = (cur.type === 'choice' && !ok && chosenIdx >= 0 && cur.optionWords) ? cur.optionWords[chosenIdx] : null;
+  if (picked && picked.w && picked.w !== w.w){
+    var tail = (picked.ph || '') + (picked.pos ? ' ' + picked.pos : '');
+    pl.innerHTML = '你选的「' + esc(picked.cn) + '」是 <b>' + esc(picked.w) + '</b> '
+                 + (tail ? '<span>' + esc(tail) + '</span>' : '');
+    pl.classList.remove('hidden');
+  } else {
+    pl.classList.add('hidden');
+    pl.innerHTML = '';
+  }
   /* 答错时补一句例句，边做边学；补全题例句本身就在上面 */
   var ex = $('exLine');
   ex.innerHTML = esc(w.en) + '<span>' + esc(w.zh) + '</span>';
