@@ -16,19 +16,30 @@
    ========================================================== */
 :root{
   --p1:#1E80FF; --p2:#38BDF8;
-  --ink:#14161F; --grey:#6B7385; --grey2:#9AA3B2;
+  --ink:#14161F; --grey:#5A6376; --grey2:#6E7789;
   --line:#E6EEF8; --soft:#F3F8FF; --soft2:#EAF3FF;
   --card:#FFFFFF;
   --bg-grad:linear-gradient(180deg,#FFFFFF 0%,#EAF3FF 100%);
-  --hover-line:#B8D3F7; --bar-cur:#BFD9FB; --switch-off:#D5DEEA;
+  --hover-line:#B8D3F7; --bar-cur:#BFD9FB; --switch-off:#D5DEEA; --switch-knob:#FFFFFF;
   --ok:#12A672; --ok-soft:#EAF8F1; --ok-line:#9FDCC1;
   --warn:#D97706; --warn-soft:#FFF4D6; --warn-soft-2:#FFFDF8; --warn-line:#F0D9A0; --warn-ink:#8A5A00;
   --danger:#E5484D; --danger-soft:#FDEDED; --danger-line:#FFD6D6;
   --tip-ink:#7C4DDB; --tip-soft:#F7F2FF;
+  /* 按钮/卡片上的图形文字：压在彩色底上时的前景色 */
+  --on-primary:#FFFFFF;
+  /* 阴影与辉光（必须是语义变量，否则换主题后还是蓝的） */
+  --shadow:0 12px 32px rgba(30,96,200,.07), 0 2px 6px rgba(30,96,200,.04);
+  --shadow-soft:0 2px 8px rgba(30,96,200,.05);
+  --shadow-mid:0 6px 18px rgba(30,96,200,.08);
+  --glow-primary:0 8px 18px rgba(43,123,245,.26);
+  --press-ring:rgba(30,128,255,.14);
+  --mask:rgba(20,22,31,.45);
+  --toast-bg:rgba(20,22,31,.92); --toast-ink:#FFFFFF;
+  /* 浏览器地址栏/状态栏配色（手机上下两条） */
+  --chrome:#EAF3FF;
   /* 兼容旧写法 */
   --green:var(--ok); --amber:var(--warn);
   --radius:20px;
-  --shadow:0 12px 32px rgba(30,96,200,.07), 0 2px 6px rgba(30,96,200,.04);
   --pad:clamp(12px,2vh,20px);
   --gap:clamp(10px,1.6vh,16px);
   --cardpad:clamp(16px,2.4vh,24px);
@@ -42,36 +53,57 @@
 /* ---------- 暖色浅调：米色底 + 暖灰 + 陶土橙 ---------- */
 [data-theme="warm"]{
   --p1:#C2703D; --p2:#E0A063;
-  --ink:#2E2A26; --grey:#7A6E63; --grey2:#A2958A;
+  --ink:#2E2A26; --grey:#6A5F55; --grey2:#7D7166;
   --line:#EADFD2; --soft:#FBF6F0; --soft2:#F6EDE3;
   --card:#FFFDFA;
   --bg-grad:linear-gradient(180deg,#FFFDFA 0%,#F7EFE4 100%);
-  --hover-line:#E3C9AE; --bar-cur:#EBD3B8; --switch-off:#DFD3C6;
+  --hover-line:#E3C9AE; --bar-cur:#EBD3B8; --switch-off:#DFD3C6; --switch-knob:#FFFDFA;
   --ok:#5F8A62; --ok-soft:#EFF4EC; --ok-line:#BFD3BB;
   --warn:#B9713A; --warn-soft:#FBF3E8; --warn-soft-2:#FFFCF6; --warn-line:#E7C79B; --warn-ink:#8A5A2B;
   --danger:#C0504A; --danger-soft:#FBEDEA; --danger-line:#EFCFC9;
   --tip-ink:#8A6A4F; --tip-soft:#F7EFE6;
+  --on-primary:#FFFBF6;
   --shadow:0 12px 32px rgba(150,110,70,.09), 0 2px 6px rgba(150,110,70,.05);
+  --shadow-soft:0 2px 8px rgba(150,110,70,.07);
+  --shadow-mid:0 6px 18px rgba(150,110,70,.10);
+  --glow-primary:0 8px 18px rgba(194,112,61,.28);
+  --press-ring:rgba(194,112,61,.18);
+  --mask:rgba(46,42,38,.42);
+  --toast-bg:rgba(46,42,38,.92);
+  --chrome:#F7EFE4;
 }
 
-/* ---------- 深色：只用黑白灰，绿→白，红保留（错误必须能一眼看出） ---------- */
+/* ---------- 深色：只用黑白灰。色阶拉开：底→卡→浮起→描边，四层分明 ---------- */
 [data-theme="dark"]{
-  --p1:#F0F0F0; --p2:#BFBFBF;
-  --ink:#F2F2F2; --grey:#A8A8A8; --grey2:#7A7A7A;
-  --line:#333333; --soft:#1B1B1B; --soft2:#242424;
-  --card:#141414;
-  --bg-grad:linear-gradient(180deg,#0D0D0D 0%,#161616 100%);
-  --hover-line:#4A4A4A; --bar-cur:#3A3A3A; --switch-off:#3A3A3A;
-  --ok:#FFFFFF; --ok-soft:#1E1E1E; --ok-line:#4A4A4A;
-  --warn:#BDBDBD; --warn-soft:#1F1F1F; --warn-soft-2:#1A1A1A; --warn-line:#3A3A3A; --warn-ink:#CFCFCF;
-  --danger:#FF6B6B; --danger-soft:#241717; --danger-line:#4A2A2A;
-  --tip-ink:#D0D0D0; --tip-soft:#1E1E1E;
-  --shadow:0 12px 32px rgba(0,0,0,.55), 0 2px 6px rgba(0,0,0,.35);
+  --p1:#EDEDED; --p2:#AFAFAF;
+  --ink:#F5F5F5; --grey:#C4C4C4; --grey2:#9E9E9E;
+  --line:#3D3D3D; --soft:#1C1C1C; --soft2:#232323;
+  --card:#151515;
+  /* 背景比卡片更暗，卡片才"浮"起来；原来两者太接近显得发闷 */
+  --bg-grad:linear-gradient(180deg,#080808 0%,#111111 100%);
+  --hover-line:#5A5A5A; --bar-cur:#4A4A4A; --switch-off:#454545; --switch-knob:#E8E8E8;
+  --ok:#FFFFFF; --ok-soft:#232323; --ok-line:#6E6E6E;
+  --warn:#D6D6D6; --warn-soft:#212121; --warn-soft-2:#1A1A1A; --warn-line:#4A4A4A; --warn-ink:#E0E0E0;
+  --danger:#FF7A7A; --danger-soft:#2A1919; --danger-line:#5C3232;
+  --tip-ink:#DADADA; --tip-soft:#212121;
+  --on-primary:#0A0A0A;
+  --shadow:0 14px 36px rgba(0,0,0,.70), 0 2px 8px rgba(0,0,0,.50);
+  --shadow-soft:0 2px 10px rgba(0,0,0,.55);
+  --shadow-mid:0 8px 22px rgba(0,0,0,.65);
+  --glow-primary:0 8px 20px rgba(0,0,0,.75);
+  --press-ring:rgba(255,255,255,.22);
+  --mask:rgba(0,0,0,.62);
+  --toast-bg:rgba(245,245,245,.95); --toast-ink:#111111;
+  --chrome:#080808;
 }
-/* 深色下彩色按钮上的文字要反过来，否则白底白字看不见 */
-[data-theme="dark"] .btn-primary{color:#111111;}
-[data-theme="dark"] .toast{background:rgba(240,240,240,.94);color:#111111;}
-[data-theme="dark"] .fb.ok .fb-mark{color:#FFFFFF;}
+/* 深色下主按钮是浅底的，文字和图标要反成深色，否则白底白字看不见 */
+[data-theme="dark"] .btn-primary{color:var(--on-primary);}
+/* 选项里的字母块：底色变成白（答对）或红（答错），里面的字母必须跟着反色，
+   否则白底白字直接看不见 */
+[data-theme="dark"] .opt.is-right .opt-k,
+[data-theme="dark"] .opt.is-wrong .opt-k{color:#0A0A0A;}
+/* 深色下 toast 是浅底的，文字要反色 */
+[data-theme="dark"] .toast{background:var(--toast-bg);color:var(--toast-ink);}
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;overflow:hidden;touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;overscroll-behavior:none;}
 body{
@@ -181,8 +213,8 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 .btn-primary{
   width:100%;padding:14px 18px;border-radius:14px;
   background:linear-gradient(90deg,var(--p1),var(--p2));
-  color:#fff;font-size:var(--fs-body);font-weight:600;
-  box-shadow:0 8px 18px rgba(43,123,245,.26);
+  color:var(--on-primary);font-size:var(--fs-body);font-weight:600;
+  box-shadow:var(--glow-primary);
 }
 .btn-primary.is-disabled,.btn-secondary.is-disabled{background:var(--line);color:var(--grey2);box-shadow:none;cursor:not-allowed;border-color:var(--line);}
 #quizActions button{width:100%;}
@@ -247,6 +279,8 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 .speaker{width:42px;height:42px;flex:0 0 42px;border-radius:50%;background:var(--soft2);color:var(--p1);display:flex;align-items:center;justify-content:center;}
 .speaker svg{width:20px;height:20px;}
 .speaker.big{width:64px;height:64px;flex:0 0 64px;}
+.speaker.sm{width:30px;height:30px;flex:0 0 30px;background:transparent;color:var(--grey2);}
+.speaker.sm svg{width:18px;height:18px;}
 .speaker.big svg{width:30px;height:30px;}
 .phonetic{color:var(--grey);font-size:var(--fs-body);}
 .pos-meaning{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
@@ -278,8 +312,8 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 .opt.is-right .opt-en{color:var(--ok);font-weight:800;}
 .opt.is-right{border-color:var(--green);background:var(--ok-soft);}
 .opt.is-wrong{border-color:var(--danger);background:var(--danger-soft);}
-.opt.is-right .opt-k{background:var(--green);color:#fff;}
-.opt.is-wrong .opt-k{background:var(--danger);color:#fff;}
+.opt.is-right .opt-k{background:var(--green);color:var(--on-primary);}
+.opt.is-wrong .opt-k{background:var(--danger);color:#FFFFFF;}
 .feedback{font-size:var(--fs-body);font-weight:600;}
 .feedback.ok{color:var(--green);}
 .feedback.no{color:var(--danger);}
@@ -344,10 +378,10 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 .share-nick label{font-size:var(--fs-aux);color:var(--grey);font-weight:600;flex:0 0 auto;}
 .share-nick input{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:var(--fs-body);color:var(--ink);background:var(--soft);outline:none;}
 .share-preview{flex:0 0 auto;height:clamp(150px,30vh,320px);display:flex;align-items:center;justify-content:center;overflow:hidden;}
-#shareCanvas{max-width:100%;max-height:100%;width:auto;height:auto;border-radius:14px;box-shadow:0 8px 24px rgba(30,96,200,.12);}
+#shareCanvas{max-width:100%;max-height:100%;width:auto;height:auto;border-radius:14px;box-shadow:var(--shadow-mid);}
 .share-empty{color:var(--grey);font-size:var(--fs-body);text-align:center;line-height:1.6;padding:20px;}
 .share-card .row2 button{width:calc(50% - 6px);}
-.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:rgba(20,22,31,.92);color:#fff;font-size:14px;line-height:1.5;padding:12px 18px;border-radius:14px;z-index:99;
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--toast-bg);color:var(--toast-ink);font-size:14px;line-height:1.5;padding:12px 18px;border-radius:14px;z-index:99;
   /* 出现/消失只做不透明度变化，不做位移 */
   opacity:0;visibility:hidden;pointer-events:none;
   transition:opacity .22s ease, visibility 0s linear .22s;
@@ -374,9 +408,9 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 .cal-lab{text-align:center;font-size:var(--fs-aux);color:var(--grey2);font-weight:600;padding:2px 0;}
 .cal-cell{aspect-ratio:1/1;min-height:0;display:flex;align-items:center;justify-content:center;border-radius:10px;border:1px solid transparent;background:var(--card);font-size:var(--fs-aux);color:var(--ink);min-width:0;}
 .cal-cell.blank{visibility:hidden;}
-.cal-cell.done{background:var(--p1);color:#fff;font-weight:700;}
+.cal-cell.done{background:var(--p1);color:var(--on-primary);font-weight:700;}
 .cal-cell.today{border-color:var(--p1);box-shadow:0 0 0 1px var(--p1) inset;color:var(--p1);font-weight:700;}
-.cal-cell.done.today{color:#fff;}
+.cal-cell.done.today{color:var(--on-primary);}
 .cal-cell.sel{outline:2px solid var(--p1);outline-offset:1px;}
 .cal-cell.clickable{cursor:pointer;}
 .cal-note{font-size:var(--fs-aux);color:var(--grey2);text-align:center;margin-top:8px;}
@@ -389,8 +423,8 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 .manage-actions button{width:100%;}
 .manage-tip{font-size:var(--fs-aux);color:var(--grey2);line-height:1.6;}
 .btn-danger{background:var(--danger-soft);color:var(--danger);border:1px solid var(--danger-line);font-weight:700;border-radius:12px;padding:12px 14px;}
-.modal-mask{position:fixed;inset:0;background:rgba(20,22,31,.45);z-index:120;display:flex;align-items:center;justify-content:center;padding:20px;}
-.modal{background:var(--card);border-radius:20px;padding:22px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(20,22,31,.22);}
+.modal-mask{position:fixed;inset:0;background:var(--mask);z-index:120;display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal{background:var(--card);border-radius:20px;padding:22px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.28);}
 .modal-title{font-size:var(--fs-body);font-weight:800;color:var(--ink);margin-bottom:10px;}
 .modal-desc{font-size:var(--fs-aux);color:var(--grey);line-height:1.75;margin-bottom:18px;}
 .modal-row{display:flex;gap:10px;}
@@ -434,7 +468,7 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 }
 .count-row button.on{
   background:var(--card);color:var(--p1);border-color:var(--line);
-  box-shadow:0 4px 12px rgba(30,96,200,.13), 0 1px 3px rgba(30,96,200,.08);
+  box-shadow:var(--shadow-mid);
 }
 @media (max-width:899px) and (max-height:720px){
   .count-row{gap:2px;}
@@ -463,7 +497,7 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 .lib-modal{max-width:460px;}
 .lib-list{display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow-y:auto;margin-bottom:14px;}
 .lib-item{border:1px solid var(--line);border-radius:13px;padding:10px 12px;cursor:pointer;background:var(--card);text-align:left;width:100%;box-sizing:border-box;}
-.lib-item.on{border-color:var(--p1);background:var(--soft);box-shadow:0 3px 10px rgba(30,96,200,.10);}
+.lib-item.on{border-color:var(--p1);background:var(--soft);box-shadow:var(--shadow-soft);}
 .lib-item-name{font-size:var(--fs-body);font-weight:800;color:var(--ink);}
 .lib-item-meta{font-size:var(--fs-aux);color:var(--grey2);margin-top:3px;}
 .lib-badge{display:inline-block;font-size:10px;font-weight:700;color:var(--p1);background:var(--soft2);border-radius:6px;padding:1px 6px;margin-left:4px;vertical-align:1px;}
@@ -506,7 +540,7 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
    按下立刻缩放+压暗，抬起就恢复，手机和电脑都能看到 */
 .is-press{transform:scale(.97) !important;filter:brightness(.94);}
 @media (hover:none){
-  .opt:not(:disabled):active{border-color:var(--p1);background:var(--soft2);box-shadow:0 0 0 2px rgba(30,128,255,.14);}
+  .opt:not(:disabled):active{border-color:var(--p1);background:var(--soft2);box-shadow:0 0 0 2px var(--press-ring);}
   .entry:active,.lib-item:active{border-color:var(--hover-line);background:var(--soft);}
   .wl-item:active{background:var(--soft);}
   .btn-primary:not(:disabled):active{filter:brightness(.92);}
@@ -519,7 +553,7 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 .btn-primary:disabled,.btn-secondary:disabled{cursor:not-allowed;}
 
 /* 顶栏：词库名本身就是切换按钮 */
-.lib-switch{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:100%;padding:7px 12px 7px 14px;border-radius:999px;background:var(--card);border:1px solid var(--line);box-shadow:0 2px 8px rgba(30,96,200,.06);font-size:var(--fs-body);font-weight:700;color:var(--ink);}
+.lib-switch{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:100%;padding:7px 12px 7px 14px;border-radius:999px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow-soft);font-size:var(--fs-body);font-weight:700;color:var(--ink);}
 .lib-switch span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .lib-switch svg{width:16px;height:16px;flex:0 0 16px;color:var(--p1);}
 .topbar .streak{font-size:var(--fs-aux);}
@@ -568,7 +602,7 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 .list-tools{display:flex;flex-direction:column;gap:8px;}
 .seg{display:flex;gap:4px;background:var(--soft);border-radius:12px;padding:3px;}
 .seg button{flex:1;padding:7px 0;border-radius:9px;font-size:var(--fs-aux);font-weight:700;color:var(--grey);}
-.seg button.on{background:var(--card);color:var(--p1);box-shadow:0 2px 8px rgba(30,96,200,.12);}
+.seg button.on{background:var(--card);color:var(--p1);box-shadow:var(--shadow-mid);}
 .wb-list{gap:4px;}
 .wl-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:12px;cursor:pointer;border-bottom:1px solid var(--line);}
 .wl-q{flex:0 0 2.4em;color:var(--grey2);font-size:var(--fs-aux);font-variant-numeric:tabular-nums;}
@@ -591,7 +625,7 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 .tr-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 @media (max-width:560px){ .tr-grid{grid-template-columns:1fr;} }
 .tr-part{border:1px solid var(--line);border-radius:16px;padding:14px;background:var(--soft);display:flex;flex-direction:column;gap:4px;}
-.tr-part.key{background:var(--card);border-color:var(--hover-line);box-shadow:0 6px 18px rgba(30,96,200,.08);}
+.tr-part.key{background:var(--card);border-color:var(--hover-line);box-shadow:var(--shadow-mid);}
 .tr-k{font-size:var(--fs-aux);color:var(--grey);font-weight:700;display:flex;align-items:center;gap:6px;}
 .tr-key{color:var(--p1);}
 .tr-key::before{content:'·';margin-right:6px;color:var(--grey2);}
@@ -651,7 +685,7 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 
 .home-wrap .entries,.home-wrap .entries.has-test{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
 .home-wrap .entries.has-test{grid-template-columns:repeat(3,minmax(0,1fr));}
-.home-wrap .entry{background:var(--card);padding:14px 12px;gap:6px;border-radius:16px;box-shadow:0 4px 14px rgba(30,96,200,.05);}
+.home-wrap .entry{background:var(--card);padding:14px 12px;gap:6px;border-radius:16px;box-shadow:var(--shadow-soft);}
 .home-wrap .entry-test{background:linear-gradient(135deg,var(--soft2),var(--soft));border-color:var(--hover-line);}
 .home-wrap .entry-name{font-size:var(--fs-body);}
 
@@ -666,9 +700,10 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 .quiz-body .quiz-label{text-align:center;font-size:var(--fs-aux);color:var(--grey2);}
 .q-word-row{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;}
 .q-word{font-size:clamp(34px,7vw,48px);font-weight:800;line-height:1.1;letter-spacing:.3px;overflow-wrap:anywhere;text-align:center;}
-.q-ph{text-align:center;color:var(--grey);font-size:var(--fs-body);margin-top:-6px;}
+.q-ph-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:-2px;}
+.q-ph{text-align:center;color:var(--grey);font-size:var(--fs-body);}
 .quiz-body .opts{gap:10px;margin-top:clamp(4px,1.4vh,14px);}
-.quiz-body .opt{min-height:54px;padding:12px 14px;border-radius:14px;background:var(--card);box-shadow:0 2px 8px rgba(30,96,200,.05);font-size:calc(var(--fs-body) + 1px);}
+.quiz-body .opt{min-height:54px;padding:12px 14px;border-radius:14px;background:var(--card);box-shadow:var(--shadow-soft);font-size:calc(var(--fs-body) + 1px);}
 .quiz-body .opt .opt-k{width:28px;height:28px;flex:0 0 28px;border-radius:8px;}
 .quiz-body .opt.is-right{box-shadow:0 0 0 1px var(--green) inset;}
 .quiz-body .opt.is-wrong{box-shadow:0 0 0 1px var(--danger) inset;}
@@ -679,7 +714,7 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 .quiz-body .dict-hint{color:var(--grey);}
 .quiz-body .dict-input{text-align:center;font-size:calc(var(--fs-body) + 4px);padding:14px;border-radius:14px;letter-spacing:.5px;}
 .quiz-body .link-btn{align-self:center;margin:0;}
-.fill-sentence{text-align:left;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px;box-shadow:0 2px 8px rgba(30,96,200,.05);}
+.fill-sentence{text-align:left;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px;box-shadow:var(--shadow-soft);}
 
 .fb{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--green);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;animation:fadeUp .16s ease;margin-top:clamp(6px,1.8vh,14px);}
 /* 答对/答错用底色 + 虚线边框，和上面的白色选项卡明显区分开，免得看混 */
@@ -750,8 +785,8 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 .wb-copy.hidden{display:none;}
 [data-screen="wrong"] .seg b{font-weight:800;margin-left:2px;}
 [data-screen="wrong"] .wb-list{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:2px 2px 6px;}
-.wb-item{display:block;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;cursor:pointer;box-shadow:0 2px 8px rgba(30,96,200,.04);}
-.wb-item.open{border-color:var(--hover-line);box-shadow:0 6px 18px rgba(30,96,200,.08);}
+.wb-item{display:block;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;cursor:pointer;box-shadow:var(--shadow-soft);}
+.wb-item.open{border-color:var(--hover-line);box-shadow:var(--shadow-mid);}
 .wb-top{display:flex;align-items:baseline;gap:8px;}
 .wb-top .wb-w{font-size:calc(var(--fs-body) + 2px);font-weight:800;}
 .wb-top .wb-ph{flex:1;min-width:0;color:var(--grey2);font-size:var(--fs-aux);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -855,8 +890,6 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 }
 .boot.hide{opacity:0;pointer-events:none;}
 .boot-inner{display:flex;flex-direction:column;align-items:center;gap:14px;padding:0 32px;text-align:center;}
-.boot-logo{font-size:46px;line-height:1;}
-.boot-title{font-size:20px;font-weight:800;color:var(--ink);letter-spacing:.5px;}
 .boot-bar{width:min(240px,62vw);height:6px;border-radius:999px;background:var(--line);overflow:hidden;}
 .boot-bar i{display:block;height:100%;width:8%;border-radius:999px;background:linear-gradient(90deg,var(--p1),var(--p2));transition:width .35s ease;}
 .boot-hint{font-size:13px;color:var(--grey);min-height:18px;}
@@ -877,8 +910,6 @@ body.booting .app{pointer-events:none;}
      所以先盖一层加载页，等初始化跑完再揭开 -->
 <div class="boot" id="boot" role="status" aria-live="polite" aria-busy="true">
   <div class="boot-inner">
-    <div class="boot-logo" aria-hidden="true">📖</div>
-    <div class="boot-title">背单词</div>
     <div class="boot-bar"><i id="bootBar"></i></div>
     <div class="boot-hint" id="bootHint">正在加载…</div>
   </div>
@@ -1077,14 +1108,15 @@ body.booting .app{pointer-events:none;}
       <div class="quiz-body" id="quizCard">
         <!-- 选择题：看词选中文 -->
         <div id="choicePane" class="q-pane">
-          <div class="quiz-label" id="quizTypeLabel">选出这个词的中文意思</div>
           <div class="q-word-row">
             <span class="q-word" id="quizWord">ability</span>
-            <button type="button" class="speaker" id="quizSpeaker" aria-label="朗读单词">
+          </div>
+          <div class="q-ph-row">
+            <span class="q-ph" id="quizPh"></span>
+            <button type="button" class="speaker sm" id="quizSpeaker" aria-label="朗读单词">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8 8 0 0 1 0 12"/></svg>
             </button>
           </div>
-          <div class="q-ph" id="quizPh"></div>
           <div class="opts" id="opts"></div>
         </div>
         <!-- 填空题：听音拼写 / 补全句子里的单词 -->
@@ -4040,7 +4072,6 @@ function renderQuiz(){
   if (cur.type === 'choice'){
     $('choicePane').classList.remove('hidden');
     $('dictPane').classList.add('hidden');
-    $('quizTypeLabel').textContent = '选出这个词的中文意思';
     $('quizWord').textContent = cur.word.w;
     $('quizPh').textContent = cur.word.ph;
     $('quizKeyhint').textContent = self ? '按 1-4 或 A-D 选，0 跳过，回车或空格下一题' : '按 1-4 或 A-D 选，回车或空格下一题';
@@ -4674,10 +4705,15 @@ function setQType(q){
 }
 /* 外观主题：blue 蓝白（默认）/ warm 暖色浅调 / dark 黑白灰深色 */
 function normTheme(t){ return (t === 'warm' || t === 'dark') ? t : 'blue'; }
+/* 手机浏览器顶部状态栏/底部地址栏的颜色取自 <meta name="theme-color">，
+   静态写死会在换主题后仍然是蓝色——所以每次换主题都同步改这里 */
+var THEME_CHROME = { blue:'#EAF3FF', warm:'#F7EFE4', dark:'#080808' };
 function paintTheme(t){
   var v = normTheme(t);
   if (v === 'blue') document.documentElement.removeAttribute('data-theme');
   else document.documentElement.setAttribute('data-theme', v);
+  var meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', THEME_CHROME[v]);
 }
 function setTheme(t){
   db.settings.theme = normTheme(t);
