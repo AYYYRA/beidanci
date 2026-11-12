@@ -3073,6 +3073,32 @@ function onlineUrl(w){
   return 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(String(w).trim())
        + '&type=' + (isUK() ? 1 : 2);
 }
+/* 音频元素池：手机浏览器对同时存在的媒体元素有硬限制（iOS 大约 4-6 个能并行加载），
+   无上限地累积会把网络栈和主线程拖死——实测做 60 题会堆到 74 个元素、最差帧 391ms。
+   这里做 LRU：只保留最近 ONLINE_MAX 个，超出的释放掉（src 置空 + load 让浏览器回收连接） */
+var ONLINE_MAX = 8, onlineOrder = [];
+function releaseAudio(rec){
+  if (!rec || !rec.el) return;
+  try { rec.el.pause(); } catch (e) {}
+  try { rec.el.removeAttribute('src'); rec.el.load(); } catch (e) {}   /* 断掉网络连接，真正释放 */
+  rec.el = null;
+}
+function evictOnline(){
+  var guard = 0;
+  while (onlineOrder.length > ONLINE_MAX && guard++ < 50){
+    var k = onlineOrder[0], rec = onlineCache[k];
+    /* 正在播的那个不释放，挪到队尾继续保留 */
+    if (rec && rec.el && rec.el === curAudio){ onlineOrder.shift(); onlineOrder.push(k); continue; }
+    onlineOrder.shift();
+    if (rec) releaseAudio(rec);
+    delete onlineCache[k];
+  }
+}
+function touchOnline(k){
+  var i = onlineOrder.indexOf(k);
+  if (i >= 0) onlineOrder.splice(i, 1);
+  onlineOrder.push(k);
+}
 function onlineAudio(w){
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return null;
   var k = (isUK() ? 'uk:' : 'us:') + String(w).toLowerCase(), rec = onlineCache[k];
@@ -3083,6 +3109,10 @@ function onlineAudio(w){
     a.addEventListener('error', function(){ rec.bad = true; });
     a.src = onlineUrl(w);
     rec.el = a;
+    touchOnline(k);
+    evictOnline();
+  } else {
+    touchOnline(k);
   }
   return rec.bad ? null : rec;
 }
@@ -3174,7 +3204,7 @@ function speak(){ var word = state.deck[state.deckIndex]; if (word) speakWord(wo
    答题音效：用 WebAudio 现场合成两个短音，不额外加载文件
    答对＝上行两个音；答错＝下行两个闷音。设置页可以关掉
    ========================================================== */
-var sfxCtx = null;
+var sfxCtx = null, sfxResuming = false;
 function sfxNote(ctx, freq, start, dur, type, peak){
   var osc = ctx.createOscillator(), g = ctx.createGain();
   osc.type = type || 'sine';
@@ -3184,6 +3214,12 @@ function sfxNote(ctx, freq, start, dur, type, peak){
   g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
   osc.connect(g);
   g.connect(ctx.destination);
+  /* 播完立刻断开：不断开的话节点会一直挂在 context 上，
+     答题几十次后创建新节点会越来越慢（实测单次能卡到 900ms） */
+  osc.onended = function(){
+    try { osc.disconnect(); } catch (e) {}
+    try { g.disconnect(); } catch (e) {}
+  };
   osc.start(start);
   osc.stop(start + dur + 0.03);
 }
@@ -3194,6 +3230,7 @@ function playFeedbackSound(ok){
     if (!AC) return;
     if (!sfxCtx) sfxCtx = new AC();
     var emit = function(){
+      if (!sfxCtx || sfxCtx.state !== 'running') return;   /* 没真正跑起来就别浪费节点 */
       var t = sfxCtx.currentTime + 0.02;
       if (ok){
         sfxNote(sfxCtx, 784, t, 0.10, 'sine', 0.22);
@@ -3204,13 +3241,15 @@ function playFeedbackSound(ok){
         sfxNote(sfxCtx, 175, t + 0.11, 0.21, 'triangle', 0.42);
       }
     };
-    /* 移动端 AudioContext 常常是 suspended：直接按 currentTime 排音会被静默丢掉，
-       必须等 resume() 兑现之后再排 */
-    if (sfxCtx.state === 'suspended' && sfxCtx.resume){
-      sfxCtx.resume().then(emit).catch(function(){});
-      return;
-    }
-    emit();
+    if (sfxCtx.state === 'running'){ emit(); return; }
+    /* 唤醒只发起一次：手机上 suspended 的 context 每次 resume() 都可能挂很久，
+       每题都调一次会把主线程拖出长帧 */
+    if (sfxResuming) return;
+    sfxResuming = true;
+    sfxCtx.resume().then(function(){
+      sfxResuming = false;
+      emit();
+    }).catch(function(){ sfxResuming = false; });
   } catch (e) { /* 没有音频设备时静默跳过 */ }
 }
 
@@ -3849,23 +3888,28 @@ function scheduleAutoNext(cur){
     if (state.quiz === q && q.answered && state.screen === 'quiz') nextQuestion();
   }, ms + 1200);
 }
-/* 空闲时把后面几题的发音先取好：慢网下切题不用现等，也避免同时开一堆请求 */
+/* 空闲时把下一题的发音先取好：慢网下切题不用现等。
+   只预取 1 个——之前预取 3 个会同时挂起多条媒体请求，手机上的并发限制很紧，
+   反而把当前这一题的播放挤慢了 */
 var prefetchSeq = 0;
+function whenIdle(fn){
+  if (window.requestIdleCallback) return requestIdleCallback(fn, { timeout: 1200 });
+  return setTimeout(fn, 300);
+}
 function prefetchAhead(q, n){
   if (!q || !q.qs || document.hidden) return;
   var conn = navigator.connection;
   if (conn && (conn.saveData || /2g/.test(conn.effectiveType || ''))) return;
-  var seq = ++prefetchSeq;
-  var i = 0;
+  var seq = ++prefetchSeq, i = 0;
   var step = function(){
     if (seq !== prefetchSeq || document.hidden) return;   /* 已经换题了就别再预取旧的 */
     if (i >= n) return;
     var item = q.qs[q.index + 1 + i];
     i++;
     if (item && item.word) onlineAudio(item.word.w);
-    setTimeout(step, 260);                                 /* 拉开间隔，别跟当前这一题抢带宽 */
+    whenIdle(step);
   };
-  setTimeout(step, 700);
+  whenIdle(step);
 }
 function renderQuiz(){
   var q = state.quiz;
@@ -3937,8 +3981,8 @@ function renderQuiz(){
     speakWord(cur.word.w);
     try { $('dictInput').focus({ preventScroll:true }); } catch (e) { $('dictInput').focus(); }
   }
-  /* 空闲时把后面 3 题的发音先取好：慢网下切题不用现等 */
-  prefetchAhead(q, 3);
+  /* 空闲时把下一题的发音先取好：慢网下切题不用现等 */
+  prefetchAhead(q, 1);
 }
 
 function markAnswer(ok, chosenIdx, cur, typed, skipped){
@@ -4529,7 +4573,10 @@ function setAutoNextMs(ms){
 function setAccent(a){
   db.settings.accent = a === 'uk' ? 'uk' : 'us';
   save();
-  onlineCache = {};
+  /* 换口音要把旧的音频元素连同网络连接一起放掉，只清对象会让连接挂着 */
+  for (var k in onlineCache) releaseAudio(onlineCache[k]);
+  onlineCache = {}; onlineOrder = [];
+  for (var k2 in audioEls) { try { audioEls[k2].pause(); } catch (e) {} }
   audioEls = {};
   stopSpeech();
   renderManage();
@@ -5003,6 +5050,18 @@ bind($('quizSubmit'), function(){ submitDict(); });
 bind($('quizNext'), function(){ nextQuestion(); });
 
 bind($('quizSkip'), skipQuestion);
+/* 兜底：答完这一题后，点反馈区任意位置也算点「下一题」。
+   慢网/节流导致自动跳题没触发时，用户点一下就能走，不会觉得"点了没反应" */
+(function(){
+  var fb = $('feedbackPane');
+  if (!fb) return;
+  fb.addEventListener('click', function(e){
+    var q = state.quiz;
+    if (!q || !q.answered || state.screen !== 'quiz') return;
+    if (e.target.closest('button')) return;      /* 按钮自己的事自己处理 */
+    nextQuestion();
+  });
+})();
 bind($('trBackBtn'), goHome);
 bind($('trHome'), goHome);
 bind($('trAdd'), addTestMisses);
@@ -5278,6 +5337,14 @@ try {
   /* 还没点过页面时浏览器不让出声：第一次点击 / 按键时再热一次 */
   document.addEventListener('pointerdown', warmAudio, { once:true, capture:true });
   document.addEventListener('keydown', warmAudio, { once:true, capture:true });
+  /* 顺手把 AudioContext 也建好：等到第一次答题时再同步 new 会卡一下 */
+  document.addEventListener('pointerdown', function(){
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!sfxCtx && AC) sfxCtx = new AC();
+      if (sfxCtx && sfxCtx.state === 'suspended' && sfxCtx.resume) sfxCtx.resume();
+    } catch (e) {}
+  }, { once:true, capture:true });
   if (!db.settings.toeflSeen){
     db.settings.toeflSeen = true;
     save();
