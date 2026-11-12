@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>背单词 · 大学英语四级高频词</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>📖</text></svg>">
-<meta name="theme-color" content="#1E80FF">
+<meta name="theme-color" content="#F7EFE4">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="背单词">
 <style>
@@ -930,12 +930,12 @@ body.booting .app{pointer-events:none;}
      顺便把浏览器自己的界面色（iOS 顶部状态栏 / 底部工具栏）也一起换掉——
      这一行必须在启动阶段就设置，等 app.js 执行就太晚了，加载页会一直是蓝的 */
   var CHROME = { blue: '#EAF3FF', warm: '#F7EFE4', dark: '#000000' };
-  var theme = 'blue';
+  var theme = 'warm';                 /* 默认外观是暖色 */
   try {
     var raw = localStorage.getItem('vocab-booster-cet4-100.v1');
     if (raw) {
       var t = (JSON.parse(raw).settings || {}).theme;
-      if (t === 'warm' || t === 'dark') theme = t;
+      if (t === 'blue' || t === 'dark') theme = t;
     }
   } catch (e) {}
   if (theme !== 'blue') document.documentElement.setAttribute('data-theme', theme);
@@ -1391,8 +1391,9 @@ var MASTER_STREAK = 3;
 var KEY_WRONG_N = 5;
 var KEY_WRONG_STREAK = 3;
 var STORE_KEY = 'vocab-booster-cet4-100.v1';
-/* 答对后自动跳下一题的等待时间（毫秒）；拼写/填空题多给 420ms 看清答案。设置页可以关掉自动跳转 */
-var AUTO_NEXT_MS = 840;
+/* 答对后自动跳下一题的默认等待时间（毫秒）；设置页有 很快/标准/很慢/不自动跳转 四档，
+   这里是最初的默认值，也是"很慢"那一档的取值 */
+var AUTO_NEXT_MS = 2600;
 /* ==========================================================
    WORDS：100 个词，每个 6 项
    单词 / 音标 / 词性 / 中文释义 / 英文例句 / 例句翻译
@@ -3405,7 +3406,7 @@ function freshDb(){
   return {
     activeLib:BUILTIN_LIBS[0].id, libs:null, vault:{}, libExtra:{},
     practice:freshPractice(), wrong:{}, mastered:{},
-    settings:{ toeflSeen:true, wbV2:true, accent:'us', qtype:'choice', sfx:true, autoNextMs:AUTO_NEXT_MS, theme:'blue' }, selftest:null
+    settings:{ toeflSeen:true, wbV2:true, accent:'us', qtype:'choice', sfx:true, autoNextMs:AUTO_NEXT_MS, theme:'warm' }, selftest:null
   };
 }
 /* ==========================================================
@@ -4720,7 +4721,8 @@ function setQType(q){
   showToast(db.settings.qtype === 'fill' ? '题型已切到填空题' : '题型已切到选择题');
 }
 /* 外观主题：blue 蓝白（默认）/ warm 暖色浅调 / dark 黑白灰深色 */
-function normTheme(t){ return (t === 'warm' || t === 'dark') ? t : 'blue'; }
+/* 默认外观是暖色；只有明确存过 'blue' 或 'dark' 才用那两个 */
+function normTheme(t){ return t === 'blue' ? 'blue' : (t === 'dark' ? 'dark' : 'warm'); }
 /* 手机浏览器顶部状态栏/底部地址栏的颜色取自 <meta name="theme-color">，
    静态写死会在换主题后仍然是蓝色——所以每次换主题都同步改这里 */
 var THEME_CHROME = { blue:'#EAF3FF', warm:'#F7EFE4', dark:'#000000' };
