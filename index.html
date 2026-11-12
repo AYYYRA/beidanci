@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>背单词 · 大学英语四级高频词</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>📖</text></svg>">
 <meta name="theme-color" content="#1E80FF">
@@ -26,7 +26,7 @@
   --fs-word:clamp(32px,5vw,52px);
 }
 *{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;overflow:hidden;}
+html,body{height:100%;overflow:hidden;touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;overscroll-behavior:none;}
 body{
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
   color:var(--ink);
@@ -56,7 +56,21 @@ input{font-family:inherit;}
   padding-left:calc(16px + env(safe-area-inset-left, 0px));
   flex-direction:column;
 }
-.screen.active{display:flex;}
+.screen.active{display:flex;animation:screenIn .22s cubic-bezier(.2,.85,.3,1);}
+/* 换屏：轻微上浮 + 淡入，够看出是"换了一页"但不拖沓 */
+@keyframes screenIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+/* 换题：题目内容单独走一个小动画，比整屏切换更快 */
+.quiz-body.q-in{animation:qIn .16s ease-out;}
+@keyframes qIn{from{opacity:0;transform:translateY(7px);}to{opacity:1;transform:translateY(0);}}
+/* 弹层：淡入 + 轻微放大 */
+.modal-mask:not(.hidden){animation:maskIn .16s ease-out;}
+.modal{animation:modalIn .2s cubic-bezier(.2,.9,.3,1);}
+@keyframes maskIn{from{opacity:0;}to{opacity:1;}}
+@keyframes modalIn{from{opacity:0;transform:scale(.96) translateY(6px);}to{opacity:1;transform:none;}}
+@media (prefers-reduced-motion: reduce){
+  .screen.active,.quiz-body.q-in,.modal,.modal-mask:not(.hidden),.fb{animation:none !important;}
+  *{transition-duration:.01ms !important;}
+}
 .wrap{
   width:100%;max-width:none;margin:0 auto;
   display:flex;flex-direction:column;gap:var(--gap);
@@ -425,6 +439,18 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
   .btn-secondary:not(:disabled):hover{border-color:#C9DDF7;color:var(--ink);}
   .wl-item:hover{background:var(--soft);}
 }
+/* 触屏上没有 hover：原来按下去只有 transform:scale(.98)，几乎看不出反馈。
+   这里补上颜色变化，手指按哪块立刻能看到 */
+@media (hover:none){
+  .opt:not(:disabled):active{border-color:var(--p1);background:var(--soft2);box-shadow:0 0 0 2px rgba(30,128,255,.14);}
+  .entry:active,.lib-item:active{border-color:#B8D3F7;background:var(--soft);}
+  .wl-item:active{background:var(--soft);}
+  .btn-primary:not(:disabled):active{filter:brightness(.92);}
+  .btn-secondary:not(:disabled):active{background:var(--soft);border-color:#B8D3F7;color:var(--ink);}
+  .icon-btn:active,.back-btn:active{background:var(--soft2);}
+  .lib-switch:active{background:var(--soft);border-color:#B8D3F7;}
+  .seg button:active{background:#fff;}
+}
 .opt:disabled{cursor:default;color:var(--ink);}
 .btn-primary:disabled,.btn-secondary:disabled{cursor:not-allowed;}
 
@@ -591,9 +617,19 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 .quiz-body .link-btn{align-self:center;margin:0;}
 .fill-sentence{text-align:left;background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px 18px;box-shadow:0 2px 8px rgba(30,96,200,.05);}
 
-.fb{background:#fff;border:1px solid var(--line);border-left:4px solid var(--green);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;animation:fadeUp .16s ease;}
-.fb.no{border-left-color:var(--danger);}
+.fb{background:#fff;border:1px solid var(--line);border-left:4px solid var(--green);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;animation:fadeUp .16s ease;margin-top:clamp(6px,1.8vh,14px);}
+/* 答对/答错用底色 + 虚线边框，和上面的白色选项卡明显区分开，免得看混 */
+.fb.ok{background:#ECFAF3;border:1px dashed #9FDCC1;border-left:4px solid var(--green);}
+.fb.no{background:#FFF6F6;border:1px dashed #F2C4C6;border-left:4px solid var(--danger);}
 .fb.hidden{display:none;}
+/* 答对：大勾居中，下面一行居中提示 */
+.fb.ok .feedback{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:4px 0 2px;}
+.fb.ok .fb-mark{font-size:48px;line-height:1;font-weight:900;color:var(--green);display:block;}
+.fb.ok .fb-msg{font-size:var(--fs-body);font-weight:800;color:var(--green);}
+/* 答错：勾叉和文字一行，左边对齐，下面是解析 */
+.fb.no .feedback{display:flex;flex-direction:row;align-items:center;gap:8px;text-align:left;}
+.fb.no .fb-mark{font-size:22px;line-height:1;font-weight:900;color:var(--danger);}
+.fb.no .fb-msg{font-size:var(--fs-body);font-weight:700;color:var(--danger);}
 .fb .answer-line{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;color:var(--grey);}
 .fb .answer-line b{color:var(--ink);font-size:calc(var(--fs-body) + 1px);}
 .fb .answer-line span{color:var(--grey2);font-size:var(--fs-aux);}
@@ -2995,10 +3031,19 @@ function onlineAudio(w){
 }
 /* 播放；浏览器还没允许出声（NotAllowedError）不算音源坏了，别降级 */
 function playEl(a, onFail){
+  /* 页面在后台就别出声：在线音频的 play() 可能因为网络卡住，
+     promise 过很久才兑现，那时用户早切到别的标签页了，会突然听见朗读 */
+  if (document.hidden){ try { a.pause(); } catch (e) {} return; }
   curAudio = a;
   try { a.currentTime = 0; } catch (e) {}
   var p = a.play();
-  if (p && p.catch) p.catch(function(err){ if (!err || err.name !== 'NotAllowedError') onFail(); });
+  if (p && p.catch){
+    p.catch(function(err){ if (!err || err.name !== 'NotAllowedError') onFail(); });
+    /* 声音真开始播时再检查一次：中途切走就立刻停掉 */
+    if (p.then) p.then(function(){
+      if (document.hidden){ try { a.pause(); } catch (e) {} }
+    });
+  }
 }
 /* 提前把下一题的录音取好，切题时零等待 */
 function preloadWord(w){
@@ -3021,13 +3066,24 @@ function stopSpeech(){
   if (curAudio){ try { curAudio.pause(); } catch (e) {} }
   try { if ('speechSynthesis' in window && (speechSynthesis.speaking || speechSynthesis.pending)) speechSynthesis.cancel(); } catch (e) {}
 }
+/* 切到后台就彻底安静：停掉正在播的、取消待办的自动跳题。
+   不做这一步会出现「人在别的标签页，突然听见朗读」——在线音频的 play()
+   可能卡到很久才兑现，自动跳题也会在后台继续触发下一题的朗读 */
+function haltAudio(){
+  if (typeof autoTimer !== 'undefined' && autoTimer){ clearTimeout(autoTimer); autoTimer = null; }
+  stopSpeech();
+}
+document.addEventListener('visibilitychange', function(){
+  if (document.hidden) haltAudio();
+});
 function speakLocal(w){
+  if (document.hidden) return;
   var a = audioFor(w);
   if (a){ playEl(a, function(){ ttsSpeak(w); }); return; }
   ttsSpeak(w);
 }
 function speakWord(w){
-  if (!w) return;
+  if (!w || document.hidden) return;
   stopSpeech();
   var rec = onlineAudio(w);
   if (rec){
@@ -3047,7 +3103,7 @@ function ttsVoice(){
   return pool.sort(function(x, y){ return score(y) - score(x); })[0] || null;
 }
 function ttsSpeak(w){
-  if (!('speechSynthesis' in window)) return;
+  if (!('speechSynthesis' in window) || document.hidden) return;
   try {
     var u = new SpeechSynthesisUtterance(w), v = ttsVoice();
     if (v){ u.voice = v; u.lang = v.lang; } else u.lang = isUK() ? 'en-GB' : 'en-US';
@@ -3075,7 +3131,7 @@ function sfxNote(ctx, freq, start, dur, type, peak){
   osc.stop(start + dur + 0.03);
 }
 function playFeedbackSound(ok){
-  if (!db || !db.settings || db.settings.sfx === false) return;
+  if (!db || !db.settings || db.settings.sfx === false || document.hidden) return;
   try {
     var AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
@@ -3083,11 +3139,12 @@ function playFeedbackSound(ok){
     if (sfxCtx.state === 'suspended' && sfxCtx.resume) sfxCtx.resume();
     var t = sfxCtx.currentTime + 0.01;
     if (ok){
-      sfxNote(sfxCtx, 784, t, 0.10, 'sine', 0.18);
-      sfxNote(sfxCtx, 1175, t + 0.085, 0.15, 'sine', 0.15);
+      sfxNote(sfxCtx, 784, t, 0.10, 'sine', 0.22);
+      sfxNote(sfxCtx, 1175, t + 0.085, 0.15, 'sine', 0.19);
     } else {
-      sfxNote(sfxCtx, 233, t, 0.13, 'triangle', 0.16);
-      sfxNote(sfxCtx, 175, t + 0.11, 0.20, 'triangle', 0.13);
+      /* 低频本来就比高频听着小，同样的峰值增益显得很轻；这里把增益拉上来才对得上答对的音量 */
+      sfxNote(sfxCtx, 233, t, 0.14, 'triangle', 0.50);
+      sfxNote(sfxCtx, 175, t + 0.11, 0.21, 'triangle', 0.42);
     }
   } catch (e) { /* 没有音频设备时静默跳过 */ }
 }
@@ -3726,6 +3783,13 @@ function renderQuiz(){
   q.answered = false;
 
   renderQuizHead(q);
+  /* 换题时给题目区一个小动画：重新挂 class 才会重播 */
+  var card = $('quizCard');
+  if (card){
+    card.classList.remove('q-in');
+    void card.offsetWidth;
+    card.classList.add('q-in');
+  }
   $('quizCard').scrollTop = 0;
   $('feedbackPane').classList.add('hidden');
   $('tipLine').classList.add('hidden');
@@ -3818,7 +3882,9 @@ function markAnswer(ok, chosenIdx, cur, typed, skipped){
   playFeedbackSound(ok);
   $('feedbackPane').className = 'fb ' + (ok ? 'ok' : 'no');
   $('feedbackText').className = 'feedback ' + (ok ? 'ok' : 'no');
-  $('feedbackText').textContent = ok ? ('✓ 答对了' + (auto ? '，马上下一题' : '')) : (skipped ? '跳过了' : (typed ? '✗ 你写的是 ' + typed : '✗ 答错了'));
+  $('feedbackText').innerHTML = ok
+    ? '<span class="fb-mark">✓</span><span class="fb-msg">答对了' + (auto ? '，马上下一题' : '') + '</span>'
+    : '<span class="fb-mark">✗</span><span class="fb-msg">' + (skipped ? '跳过了' : (typed ? '你写的是 ' + esc(typed) : '答错了')) + '</span>';
   /* 选择题答对时选项已经标绿，不再重复一行答案 */
   var showAns = !ok || cur.type !== 'choice';
   $('answerLine').classList.toggle('hidden', !showAns);
