@@ -729,8 +729,27 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 .safe-stat b.no{color:var(--danger);}
 
 /* ==========================================================
-   第十五轮：答错时告诉你「选错的那条释义其实是哪个词」
+   第十六轮：启动加载遮罩
+   单文件把主页标记放在前面、脚本放在最后。慢网下主页先画出来，
+   但脚本还没跑，按钮点不动——遮罩挡住这段空窗期，初始化完才揭开
    ========================================================== */
+.boot{
+  position:fixed;inset:0;z-index:9999;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(180deg,#ffffff 0%,#EAF3FF 100%);
+  transition:opacity .3s ease;
+}
+.boot.hide{opacity:0;pointer-events:none;}
+.boot-inner{display:flex;flex-direction:column;align-items:center;gap:14px;padding:0 32px;text-align:center;}
+.boot-logo{font-size:46px;line-height:1;}
+.boot-title{font-size:20px;font-weight:800;color:#14161F;letter-spacing:.5px;}
+.boot-bar{width:min(240px,62vw);height:6px;border-radius:999px;background:#E6EEF8;overflow:hidden;}
+.boot-bar i{display:block;height:100%;width:8%;border-radius:999px;background:linear-gradient(90deg,#2B7BF5,#38BDF8);transition:width .35s ease;}
+.boot-hint{font-size:13px;color:#6B7385;min-height:18px;}
+/* 遮罩期间别让底下的按钮抢到点击和键盘焦点 */
+body.booting .app{pointer-events:none;}
+
+/* ---- 第十五轮：答错时告诉你「选错的那条释义其实是哪个词」 ---- */
 .fb .pick-line{font-size:var(--fs-aux);color:var(--grey);line-height:1.7;padding-top:6px;margin-top:2px;border-top:1px dashed var(--line);}
 .fb .pick-line b{color:var(--danger);font-weight:800;}
 /* 音标+词性整体不拆行，免得 /ˈvʌlnərəbl/ 和 adj. 被挤成两截 */
@@ -738,7 +757,45 @@ body.warn-on .screen{padding-top:calc(var(--pad) + 30px);}
 .fb .pick-line.hidden{display:none;}
 </style>
 </head>
-<body>
+<body class="booting">
+<!-- 启动遮罩：单文件里主页标记在前、脚本在后。慢网下主页会先渲染出来，
+     但脚本还没执行，按钮点了没反应，很容易让人以为坏了直接退出。
+     所以先盖一层加载页，等初始化跑完再揭开 -->
+<div class="boot" id="boot" role="status" aria-live="polite" aria-busy="true">
+  <div class="boot-inner">
+    <div class="boot-logo" aria-hidden="true">📖</div>
+    <div class="boot-title">背单词</div>
+    <div class="boot-bar"><i id="bootBar"></i></div>
+    <div class="boot-hint" id="bootHint">正在加载…</div>
+  </div>
+</div>
+<script>
+/* 遮罩一出现就开始爬进度：真实的下载阶段拿不到字节数，
+   就按时间往前推（越接近 68% 越慢），脚本真正开始执行时再跳到 72% */
+(function () {
+  var bar = document.getElementById('bootBar');
+  var hint = document.getElementById('bootHint');
+  var p = 8, timer = null;
+  if (bar) bar.style.width = p + '%';
+  timer = setInterval(function () {
+    p += Math.max(0.5, (68 - p) * 0.055);
+    if (p > 68) p = 68;
+    if (bar) bar.style.width = p + '%';
+  }, 160);
+  window.__bootTimer = timer;
+  /* 兜底提示：一直没加载完就告诉用户别急，而不是让他对着转圈猜 */
+  setTimeout(function () {
+    var b = document.getElementById('boot');
+    if (hint && b && !b.classList.contains('hide')) hint.textContent = '网络有点慢，正在继续加载…';
+  }, 7000);
+})();
+</script>
+<noscript>
+  <div style="position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:#fff;color:#14161F;font-size:15px;padding:24px;text-align:center">
+    这个页面需要开启 JavaScript 才能使用，请在浏览器设置里打开后刷新。
+  </div>
+</noscript>
+
 <div class="save-warn" id="saveWarn">这个浏览器不让保存，关掉会丢</div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <!-- 通用确认框：重置进度 / 中途退出小测 / 中途退出自测 共用 -->
@@ -2849,6 +2906,26 @@ function wordByKey(k){
   return DICT[String(k).toLowerCase()] || null;
 }
 
+/* ==========================================================
+   启动遮罩
+   单文件的主页标记在脚本之前，慢网下会先画出界面但按钮还点不动。
+   遮罩挡住这段空窗期，初始化跑完才揭开（进度条由 body 里的早期脚本先推）
+   ========================================================== */
+function bootStep(pct, hint){
+  var bar = document.getElementById('bootBar'), h = document.getElementById('bootHint');
+  if (bar) bar.style.width = pct + '%';
+  if (h && hint) h.textContent = hint;
+}
+function bootDone(){
+  if (window.__bootTimer){ clearInterval(window.__bootTimer); window.__bootTimer = null; }
+  bootStep(100, '');
+  document.body.classList.remove('booting');
+  var b = document.getElementById('boot');
+  if (!b) return;
+  b.classList.add('hide');
+  setTimeout(function(){ if (b.parentNode) b.parentNode.removeChild(b); }, 340);
+}
+
 /* 同一时间只显示一屏 */
 var state = {
   screen:'home',
@@ -4894,20 +4971,28 @@ fitViewport();
    初始化：先读本地进度，再渲染首页并停在主页（不自动进学习页）
    老用户第一次打开新版本：自动切到托福 B 卷一次（原词库进度原样存着，随时切回）
    ========================================================== */
-load();
-renderHome();
-show('home');
-warmAudio();
-/* 还没点过页面时浏览器不让出声：第一次点击 / 按键时再热一次 */
-document.addEventListener('pointerdown', warmAudio, { once:true, capture:true });
-document.addEventListener('keydown', warmAudio, { once:true, capture:true });
-if (!db.settings.toeflSeen){
-  db.settings.toeflSeen = true;
-  save();
-  if (db.activeLib !== 'toefl'){
-    switchLib('toefl');
-    showToast('新增「托福 B 卷 100 词」，已切过去；点左上角词库名可以切回原来的');
+bootStep(72, '正在准备词库…');
+try {
+  load();
+  renderHome();
+  show('home');
+  warmAudio();
+  /* 还没点过页面时浏览器不让出声：第一次点击 / 按键时再热一次 */
+  document.addEventListener('pointerdown', warmAudio, { once:true, capture:true });
+  document.addEventListener('keydown', warmAudio, { once:true, capture:true });
+  if (!db.settings.toeflSeen){
+    db.settings.toeflSeen = true;
+    save();
+    if (db.activeLib !== 'toefl'){
+      switchLib('toefl');
+      showToast('新增「托福 B 卷 100 词」，已切过去；点左上角词库名可以切回原来的');
+    }
   }
+} catch (err) {
+  /* 初始化真出问题时别把用户永远锁在遮罩后面 */
+  try { showToast('初始化出错：' + ((err && err.message) || err)); } catch (e2) {}
+} finally {
+  bootDone();
 }
 </script>
 </body>
